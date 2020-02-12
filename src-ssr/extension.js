@@ -19,7 +19,9 @@ module.exports.extendApp = function ({ app, ssr }) {
      Example: app.use(), app.get() etc
   */
 
-  // CAS Authentication (https://www.npmjs.com/package/cas-authentication).
+  //********************//
+  // CAS Authentication (https://www.npmjs.com/package/cas-authentication)
+  //********************//
   const
     path = require('path'),
     session = require('express-session'),
@@ -35,22 +37,13 @@ module.exports.extendApp = function ({ app, ssr }) {
       duration          : duration,
       activeDuration    : duration
   }));
-
-  // Create a new instance of CasAuth.
-  // const cas = new CasAuth({
-  //   cas_url: 'https://secure.its.yale.edu/cas',
-  //   service_url: 'http://localhost:8080/',
-  //   version: '1.0'
-  // });
-
-  const cas = new CASAuth({
-    cas_url: casUrl || 'https://secure.its.yale.edu/cas',
+  // Authentication code adapted from https://github.com/sketsdever/deadpeople (former group project of mine).
+  const cas = new CasAuth({
+    cas_url: 'https://secure.its.yale.edu/cas',
     service_url: '',
     cas_version: '1.0'
   });
-
-  // Help make running on Heroku easier for students. Let's automatically
-  // change the `service_url` on the first request.
+  // Automatically change the `service_url` on the first request.
   let serviceURLchecked = false;
   cas.checkServiceURL = (req, res, next) => {
     if (serviceURLchecked === false) {
@@ -60,12 +53,11 @@ module.exports.extendApp = function ({ app, ssr }) {
     }
     next();
   }
-
   // This route will de-authenticate the client with the Express server and then
   // redirect the client to the CAS logout page.
   app.get('/logout', cas.logout);
   // Small middleware that sets the CAS auth service_url on first request.
-  app.use(auth.checkServiceURL);
+  app.use(cas.checkServiceURL);
   // Unauthenticated users should get redirected to CAS login before any route.
   app.use(cas.bounce);
 
