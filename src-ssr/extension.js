@@ -15,7 +15,6 @@ module.exports.extendApp = function ({ app, ssr }) {
   /*
      Extend the parts of the express app that you
      want to use with development server too.
-
      Example: app.use(), app.get() etc
   */
 
@@ -23,7 +22,6 @@ module.exports.extendApp = function ({ app, ssr }) {
   // CAS Authentication (https://www.npmjs.com/package/cas-authentication)
   //********************//
   const
-    path = require('path'),
     session = require('express-session'),
     CasAuth = require('cas-authentication'),
     sessionSecret = process.env.SESSION_SECRET || 'parastratiosphecomyiastratiosphecomyioides',
@@ -60,5 +58,17 @@ module.exports.extendApp = function ({ app, ssr }) {
   app.use(cas.checkServiceURL);
   // Unauthenticated users should get redirected to CAS login before any route.
   app.use(cas.bounce);
+
+  //********************//
+  // Workspaces
+  //********************//
+
+  app.get('/workspace', (req, res) => {
+    console.log(req.url);
+    let workspace_id = req.query.id;
+    let url = 'http://localhost:3000/tongeren_vrijthof_db/workspace/' + workspace_id + '.png';
+    console.log(url);
+    res.send( { image_url: url } );
+  })
 
 };
