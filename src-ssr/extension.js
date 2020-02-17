@@ -53,22 +53,56 @@ module.exports.extendApp = function ({ app, ssr }) {
   }
   // This route will de-authenticate the client with the Express server and then
   // redirect the client to the CAS logout page.
-  app.get('/logout', cas.logout);
-  // Small middleware that sets the CAS auth service_url on first request.
-  app.use(cas.checkServiceURL);
-  // Unauthenticated users should get redirected to CAS login before any route.
-  app.use(cas.bounce);
+  // app.get('/logout', cas.logout);
+  // // Small middleware that sets the CAS auth service_url on first request.
+  // app.use(cas.checkServiceURL);
+  // // Unauthenticated users should get redirected to CAS login before any route.
+  // app.use(cas.bounce);
 
   //********************//
   // Workspaces
   //********************//
-
-  app.get('/workspace', (req, res) => {
+  const
+    util = require('util'),
+    fetch = require('node-fetch'),
+    fs = require('fs'),
+    xml2js = require('xml2js');
+  // Workspace endpoint, query must contain id of workspace.
+  app.get('/workspace', async (req, res) => {
     console.log(req.url);
-    let workspace_id = req.query.id;
-    let url = 'http://localhost:3000/tongeren_vrijthof_db/workspace/' + workspace_id + '.png';
-    console.log(url);
-    res.send( { image_url: url } );
+    const workspace_id = req.query.id;
+    // let url = 'http://localhost:3000/tongeren_vrijthof_db/workspace/' + workspace_id + '.png';
+    // console.log(url);
+    // res.send( { image_url: url } );
+    const parser = new xml2js.Parser();
+    fs.readFile(__dirname + '/../src/assets/xml/' + workspace_id + '.xml', (err, data) => {
+      parser.parseString(data, (err, result) => {
+        // console.log(util.inspect(result.XML, false, null));
+        let groups = [];
+        let group_num = 0;
+        result.XML.group.forEach(g => {
+          let group_obj = {};
+          group_obj.num = group_num;
+          group_num += 1;
+          group_obj.xf = g.XF[0];
+          group_obj.fragments = [];
+          let frag_num = 0;
+          g.fragment.forEach(f => {
+            let frag_obj = {};
+            frag_obj.num = frag_num;
+            frag_num += 1;
+            frag_obj.id = f['$'].ID;
+            // add URLS for images (front-2d, mask, etc.)
+            frag_obj.xf = f.XF[0];
+            group_obj.fragments.push(frag_obj);
+          });
+          groups.push(group_obj);
+        });
+        // console.log(util.inspect(groups, false, null));
+        res.send( { groups: groups} );
+      });
+    });
   })
+
 
 };
