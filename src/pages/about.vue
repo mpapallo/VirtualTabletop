@@ -1,7 +1,6 @@
 <template>
   <q-page padding>
-    <!-- content -->
-    <p>What even is this project anyhow</p>
+    <p>Senior Project in Computer Science at Yale University for Michaela Papallo... </p>
   </q-page>
 </template>
 

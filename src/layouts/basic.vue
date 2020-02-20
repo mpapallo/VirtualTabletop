@@ -22,12 +22,6 @@
       <router-view />
     </q-page-container>
 
-    <q-footer reveal class="bg-grey-6 text-white">
-      <q-toolbar>
-        <q-subtitle>A Senior Project in Computer Science</q-subtitle>
-      </q-toolbar>
-    </q-footer>
-
   </q-layout>
 </template>
 
