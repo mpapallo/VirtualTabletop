@@ -93,13 +93,14 @@ module.exports.extendApp = function ({ app, ssr }) {
             frag_num += 1;
             frag_obj.id = f['$'].ID;
             // add URLS for images (front-2d, mask, etc.)
+            frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color.png';
             frag_obj.xf = f.XF[0];
             group_obj.fragments.push(frag_obj);
           });
           groups.push(group_obj);
         });
         // console.log(util.inspect(groups, false, null));
-        res.send( { groups: groups} );
+        res.send( { groups: groups } );
       });
     });
   })
