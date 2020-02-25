@@ -95,6 +95,9 @@ module.exports.extendApp = function ({ app, ssr }) {
             // add URLS for images (front-2d, mask, etc.)
             frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color.png';
             frag_obj.xf = f.XF[0];
+            const transform = frag_obj.xf.split(/\s/);
+            frag_obj.translx = Math.round(parseFloat(transform[4]));
+            frag_obj.transly = Math.round(parseFloat(transform[8]));
             group_obj.fragments.push(frag_obj);
           });
           groups.push(group_obj);

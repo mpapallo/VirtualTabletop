@@ -6,64 +6,74 @@
         @click='getWorkspace'
       />
     </div>
-    <div align='center' v-if='groups.length'>
 
-      <l-map
-        id='mymap'
-        :crs='crs'
-        :center='center'
-      >
-      <l-image-overlay
-        :url='url'
-        :bounds='bounds'
-        :center='center'
-      />
-      </l-map>
+    <div id='mymap'></div>
 
+    <div v-if='groups.length'>
       <q-list bordered separated>
         <q-item v-for='group in groups' v-bind:key='group.num'>
           {{ group.num }}
           <q-list dense>
             <q-item v-for='frag in group.fragments' v-bind:key='frag.num'>
-              {{ frag.id }}
+              {{ frag.id }} : translation [{{ frag.translx }}, {{ frag.transly }}]
             </q-item>
           </q-list>
         </q-item>
       </q-list>
-
     </div>
+
   </q-page>
 </template>
 
 <script>
-// import L from 'leaflet'
-import { CRS } from 'leaflet'
-import { LMap, LImageOverlay } from 'vue2-leaflet'
+// leaflet components
+import L from 'leaflet'
+// import 'leaflet-distortableimage/src/DistortableImageOverlay.js'
+// leaflet style
 import 'leaflet/dist/leaflet.css'
+import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
 
 export default {
   name: 'Workspace',
   components: {
-    LMap,
-    LImageOverlay
   },
   data () {
     return {
       id: 'WDC17',
       groups: [],
-      url: '',
-      crs: CRS.Simple,
-      bounds: null,
-      center: [0, 0]
+      map: null,
+      bg: null,
+      img: null
     }
   },
+  mounted () {
+    this.initMap()
+  },
   methods: {
+    initMap () {
+      let url = 'https://cdn.hipwallpaper.com/i/72/7/pPns49.png'
+      this.map = L.map('mymap', {
+        crs: L.CRS.Simple,
+        minZoom: -1,
+        maxZoom: 0
+      })
+      let bounds = [[0, 0], [1200, 1920]]
+      L.imageOverlay(url, bounds).addTo(this.map)
+      this.map.fitBounds(bounds)
+    },
     async getWorkspace () {
       let url = new URL('http://localhost:8080/workspace')
       url.searchParams.append('id', this.id)
       let response = await this.fetchAsync(url)
       this.groups = response.groups
-      this.url = this.groups[0].fragments[0].url
+      let frag = this.groups[0].fragments[0]
+      // console.log(frag.translx, frag.transly)
+      // need height and width of image to get proper bounds?
+      let w = 580 + frag.translx,
+        h = 670 + frag.transly
+      let bounds = [[frag.transly, frag.translx], [h, w]]
+      L.imageOverlay(frag.url, bounds).addTo(this.map)
+      // L.distortableImageOverlay(frag.url).addTo(this.map)
     },
     async fetchAsync (url) {
       try {
@@ -80,8 +90,8 @@ export default {
 
 <style>
 #mymap {
-  height: 500px;
-  width: 80%;
+  height: 600px;
+  width: 90%;
   border: 1px solid;
   margin-top: 50px;
   margin-bottom: 50px;
