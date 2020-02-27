@@ -1,11 +1,5 @@
 <template>
   <q-page padding>
-    <div>
-      <q-btn
-        :label='id'
-        @click='getWorkspace'
-      />
-    </div>
 
     <div id='mymap'></div>
 
@@ -26,12 +20,15 @@
 </template>
 
 <script>
+// leaflet
 import L from 'leaflet'
-// import '../statics/leaflet-distortableimage-imports.js'
-// css
 import 'leaflet/dist/leaflet.css'
-// import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
-// import 'leaflet-distortableimage/dist/vendor.css'
+// leaflet add-ons
+import 'leaflet-tilelayer-mask/leaflet-tilelayer-mask.js'
+import 'leaflet-toolbar/dist/leaflet.toolbar.js'
+import 'leaflet-distortableimage/dist/leaflet.distortableimage.js'
+import 'leaflet-toolbar/dist/leaflet.toolbar.css'
+import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
 
 export default {
   name: 'Workspace',
@@ -46,8 +43,9 @@ export default {
       height: 1200
     }
   },
-  mounted () {
+  async mounted () {
     this.initMap()
+    this.getWorkspace(this.id)
   },
   methods: {
     initMap () {
@@ -61,17 +59,29 @@ export default {
       L.imageOverlay(url, bounds).addTo(this.map)
       this.map.fitBounds(bounds)
     },
-    async getWorkspace () {
+    async getWorkspace (id) {
       let url = new URL('http://localhost:8080/workspace')
-      url.searchParams.append('id', this.id)
+      url.searchParams.append('id', id)
       let response = await this.fetchAsync(url)
       this.groups = response.groups
+
       this.groups.forEach(group => {
         group.fragments.forEach(frag => {
-          let starty = this.height / 2 + group.xf[7] + frag.xf[7],
-            startx = this.width / 2 + group.xf[3] + frag.xf[3],
-            bounds = [[starty, startx], [starty + frag.h / 2, startx + frag.w / 2]]
-          L.imageOverlay(frag.url, bounds).addTo(this.map)
+          // let starty = this.height / 2 + group.xf[7] + frag.xf[7],
+          //   startx = this.width / 2 + group.xf[3] + frag.xf[3]
+          // let bounds = [[starty, startx], [starty + frag.h / 2, startx + frag.w / 2]]
+          // L.imageOverlay(frag.url, bounds).addTo(this.map)
+          // let corners = [
+          //   L.LatLng(starty + frag.h / 2, startx),
+          //   L.LatLng(starty + frag.h / 2, startx + frag.w / 2),
+          //   L.LatLng(starty, startx),
+          //   L.LatLng(starty, startx + frag.w / 2)
+          // ]
+          L.distortableImageOverlay(frag.url, {
+            // corners: corners,
+            actions: [L.RotateAction],
+            mode: 'rotate'
+          }).addTo(this.map)
         })
       })
     },

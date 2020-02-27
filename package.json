@@ -16,6 +16,7 @@
     "cas-authentication": "0.0.8",
     "express-session": "^1.17.0",
     "leaflet": "^1.6.0",
+    "leaflet-distortableimage": "^0.12.6",
     "node-fetch": "^2.6.0",
     "probe-image-size": "^5.0.0",
     "quasar": "^1.0.0",
