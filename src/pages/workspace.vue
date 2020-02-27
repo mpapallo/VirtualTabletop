@@ -15,7 +15,7 @@
           {{ group.num }}
           <q-list dense>
             <q-item v-for='frag in group.fragments' v-bind:key='frag.num'>
-              {{ frag.id }} : translation [{{ frag.translx }}, {{ frag.transly }}]
+              {{ frag.id }} translate {{ frag.xf[3] }} {{ frag.xf[7] }}
             </q-item>
           </q-list>
         </q-item>
@@ -26,12 +26,12 @@
 </template>
 
 <script>
-// leaflet components
 import L from 'leaflet'
-// import 'leaflet-distortableimage/src/DistortableImageOverlay.js'
-// leaflet style
+// import '../statics/leaflet-distortableimage-imports.js'
+// css
 import 'leaflet/dist/leaflet.css'
-import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
+// import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
+// import 'leaflet-distortableimage/dist/vendor.css'
 
 export default {
   name: 'Workspace',
@@ -42,8 +42,8 @@ export default {
       id: 'WDC17',
       groups: [],
       map: null,
-      bg: null,
-      img: null
+      width: 1920,
+      height: 1200
     }
   },
   mounted () {
@@ -52,12 +52,12 @@ export default {
   methods: {
     initMap () {
       let url = 'https://cdn.hipwallpaper.com/i/72/7/pPns49.png'
+      let bounds = [[0, 0], [this.height, this.width]]
       this.map = L.map('mymap', {
         crs: L.CRS.Simple,
         minZoom: -1,
         maxZoom: 0
       })
-      let bounds = [[0, 0], [1200, 1920]]
       L.imageOverlay(url, bounds).addTo(this.map)
       this.map.fitBounds(bounds)
     },
@@ -66,14 +66,14 @@ export default {
       url.searchParams.append('id', this.id)
       let response = await this.fetchAsync(url)
       this.groups = response.groups
-      let frag = this.groups[0].fragments[0]
-      // console.log(frag.translx, frag.transly)
-      // need height and width of image to get proper bounds?
-      let w = 580 + frag.translx,
-        h = 670 + frag.transly
-      let bounds = [[frag.transly, frag.translx], [h, w]]
-      L.imageOverlay(frag.url, bounds).addTo(this.map)
-      // L.distortableImageOverlay(frag.url).addTo(this.map)
+      this.groups.forEach(group => {
+        group.fragments.forEach(frag => {
+          let starty = this.height / 2 + group.xf[7] + frag.xf[7],
+            startx = this.width / 2 + group.xf[3] + frag.xf[3],
+            bounds = [[starty, startx], [starty + frag.h / 2, startx + frag.w / 2]]
+          L.imageOverlay(frag.url, bounds).addTo(this.map)
+        })
+      })
     },
     async fetchAsync (url) {
       try {

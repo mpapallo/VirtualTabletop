@@ -64,45 +64,67 @@ module.exports.extendApp = function ({ app, ssr }) {
   //********************//
   const
     util = require('util'),
-    fetch = require('node-fetch'),
+    // fetch = require('node-fetch'),
     fs = require('fs'),
-    xml2js = require('xml2js');
+    xml2js = require('xml2js'),
+    probe = require('probe-image-size');
+
   // Workspace endpoint, query must contain id of workspace.
   app.get('/workspace', async (req, res) => {
-    console.log(req.url);
     const workspace_id = req.query.id;
-    // let url = 'http://localhost:3000/tongeren_vrijthof_db/workspace/' + workspace_id + '.png';
-    // console.log(url);
-    // res.send( { image_url: url } );
     const parser = new xml2js.Parser();
-    fs.readFile(__dirname + '/../src/assets/xml/' + workspace_id + '.xml', (err, data) => {
-      parser.parseString(data, (err, result) => {
-        // console.log(util.inspect(result.XML, false, null));
+    fs.readFile(__dirname + '/../src/assets/xml/' + workspace_id + '.xml', async (err, data) => {
+      parser.parseString(data, async (err, result) => {
+        // parse info for each group of fragments
         let groups = [];
         let group_num = 0;
-        result.XML.group.forEach(g => {
+        for (let g_index = 0; g_index < result.XML.group.length; g_index ++) {
+          const g = result.XML.group[g_index];
           let group_obj = {};
           group_obj.num = group_num;
           group_num += 1;
-          group_obj.xf = g.XF[0];
+
+          // parse group transform matrix as array of vals
+          const group_transform = g.XF[0].split(/\s/);
+          let group_xf = [];
+          for (let i = 1; i < group_transform.length - 1; i++) {
+            group_xf.push(Number(parseFloat(group_transform[i])));
+          }
+          group_obj.xf = group_xf;
+
+          // parse each fragment info within group
           group_obj.fragments = [];
           let frag_num = 0;
-          g.fragment.forEach(f => {
+          for (let f_index = 0; f_index < g.fragment.length; f_index ++) {
+            const f = g.fragment[f_index];
             let frag_obj = {};
             frag_obj.num = frag_num;
             frag_num += 1;
+
+            // parse id for url
             frag_obj.id = f['$'].ID;
-            // add URLS for images (front-2d, mask, etc.)
             frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color.png';
-            frag_obj.xf = f.XF[0];
-            const transform = frag_obj.xf.split(/\s/);
-            frag_obj.translx = Math.round(parseFloat(transform[4]));
-            frag_obj.transly = Math.round(parseFloat(transform[8]));
+            // get dimension info
+            try {
+              const result = await probe(frag_obj.url);
+              frag_obj.w = result.width;
+              frag_obj.h = result.height;
+            } catch (e) {
+              frag_obj.w = 0;
+              frag_obj.h = 0;
+            }
+            // parse fragment transform matrix as array of vals
+            const transform = f.XF[0].split(/\s/);
+            let frag_xf = [];
+            for (let i = 1; i < transform.length - 1; i++) {
+              frag_xf.push(Number(parseFloat(transform[i])));
+            }
+            frag_obj.xf = frag_xf;
+
             group_obj.fragments.push(frag_obj);
-          });
+          }
           groups.push(group_obj);
-        });
-        // console.log(util.inspect(groups, false, null));
+        }
         res.send( { groups: groups } );
       });
     });
