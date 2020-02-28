@@ -18,6 +18,15 @@ module.exports.extendApp = function ({ app, ssr }) {
      Example: app.use(), app.get() etc
   */
 
+  // // CORS middleware
+  // const allowCrossDomain = function(req, res, next) {
+  //     res.header('Access-Control-Allow-Origin', '*');
+  //     res.header('Access-Control-Allow-Methods', '*');
+  //     res.header('Access-Control-Allow-Headers', '*');
+  //     next();
+  // }
+  // app.use(allowCrossDomain)
+
   //********************//
   // CAS Authentication (https://www.npmjs.com/package/cas-authentication)
   //********************//
@@ -90,6 +99,8 @@ module.exports.extendApp = function ({ app, ssr }) {
           for (let i = 1; i < group_transform.length - 1; i++) {
             group_xf.push(Number(parseFloat(group_transform[i])));
           }
+          group_xf[3] *= 4;
+          group_xf[7] *= 4;
           group_obj.xf = group_xf;
 
           // parse each fragment info within group
@@ -104,6 +115,8 @@ module.exports.extendApp = function ({ app, ssr }) {
             // parse id for url
             frag_obj.id = f['$'].ID;
             frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color.png';
+            // frag_obj.mask_url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-color-smask.png';
+
             // get dimension info
             try {
               const result = await probe(frag_obj.url);
@@ -119,6 +132,8 @@ module.exports.extendApp = function ({ app, ssr }) {
             for (let i = 1; i < transform.length - 1; i++) {
               frag_xf.push(Number(parseFloat(transform[i])));
             }
+            frag_xf[3] *= 4;
+            frag_xf[7] *= 4;
             frag_obj.xf = frag_xf;
 
             group_obj.fragments.push(frag_obj);
