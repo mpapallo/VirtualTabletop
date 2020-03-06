@@ -1,8 +1,9 @@
 <template>
   <q-page padding>
 
+    <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
+
     <div id='mymap'></div>
-    <q-btn color="primary" label="Undo Changes" @click=restoreOriginalPositions />
 
     <div v-if='groups.length'>
       <q-list bordered separated>
@@ -10,7 +11,7 @@
           {{ group.num }}
           <q-list dense>
             <q-item v-for='frag in group.fragments' v-bind:key='frag.num'>
-              {{ frag.id }} translate {{ frag.xf[3] }} {{ frag.xf[7] }}
+              {{ frag.id }}
             </q-item>
           </q-list>
         </q-item>
@@ -37,13 +38,15 @@ export default {
   },
   data () {
     return {
-      id: 'WDC11',
+      id: 'WDC17',
       width: 3840, // 1920,
       height: 2400, // 1200,
       groups: [],
       map: null,
-      images: [],
-      ogPositions: []
+      imageGroup: null,
+      imageUrls: [],
+      origPositions: [],
+      corners: []
     }
   },
   async mounted () {
@@ -85,22 +88,47 @@ export default {
             // points in leaflet are (lat, lng) so basically (y, x)
             corners.push([result[1] + ycenter, result[0] + xcenter])
           })
-          // add images to map
-          const img = L.distortableImageOverlay(frag.url, {
-            corners: corners,
-            actions: [L.RotateAction], // does RevertAction work?
-            mode: 'rotate',
-            suppressToolbar: true
-          }).addTo(this.map)
-          this.images.push(img)
-          this.ogPositions.push(corners)
+          this.imageUrls.push(frag.url)
+          this.origPositions.push(corners)
         })
+      })
+      console.log(this.origPositions[0])
+      this.repopulateImages()
+    },
+    copyCorners () {
+      let corners = []
+      this.origPositions.forEach(coords => {
+        let t = []
+        coords.forEach(p => {
+          t.push([p[0], p[1]])
+        })
+        corners.push(t)
+      })
+      this.corners = corners
+    },
+    repopulateImages () {
+      this.copyCorners()
+      this.imageGroup = L.distortableCollection({
+        suppressToolbar: true
+      }).addTo(this.map)
+      this.imageUrls.forEach((url, index) => {
+        const corners = this.corners[index]
+        const img = L.distortableImageOverlay(url, {
+          corners: corners,
+          actions: [L.RotateAction],
+          mode: 'rotate',
+          suppressToolbar: true
+        })
+        this.imageGroup.addLayer(img)
       })
     },
     restoreOriginalPositions () {
-      this.images.forEach((img, i) => {
-        img.setCorners(this.ogPositions[i])
-      })
+      this.imageGroup.clearLayers()
+      console.log(this.origPositions[0])
+      this.repopulateImages()
+      // this.imageGroup.eachLayer((img, index) => {
+      //   img.setCorners(this.origPositions[index])
+      // })
     },
     async fetchAsync (url) {
       try {
