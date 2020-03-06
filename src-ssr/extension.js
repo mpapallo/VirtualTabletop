@@ -114,8 +114,7 @@ module.exports.extendApp = function ({ app, ssr }) {
 
             // parse id for url
             frag_obj.id = f['$'].ID;
-            frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color.png';
-            // frag_obj.mask_url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-color-smask.png';
+            frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color-masked.png';
 
             // get dimension info
             try {

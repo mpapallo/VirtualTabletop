@@ -2,6 +2,7 @@
   <q-page padding>
 
     <div id='mymap'></div>
+    <q-btn color="primary" label="Undo Changes" @click=restoreOriginalPositions />
 
     <div v-if='groups.length'>
       <q-list bordered separated>
@@ -36,11 +37,13 @@ export default {
   },
   data () {
     return {
-      id: 'WDC17',
+      id: 'WDC11',
+      width: 3840, // 1920,
+      height: 2400, // 1200,
       groups: [],
       map: null,
-      width: 1920,
-      height: 1200
+      images: [],
+      ogPositions: []
     }
   },
   async mounted () {
@@ -64,9 +67,9 @@ export default {
       url.searchParams.append('id', id)
       const response = await this.fetchAsync(url)
       this.groups = response.groups
-
       this.groups.forEach(group => {
         group.fragments.forEach(frag => {
+          // apply given transformation (from original xml file) to img corners
           const xcenter = this.width / 2
           const ycenter = this.height / 2
           const points = [
@@ -82,13 +85,21 @@ export default {
             // points in leaflet are (lat, lng) so basically (y, x)
             corners.push([result[1] + ycenter, result[0] + xcenter])
           })
-          // make sure whatever server is serving up these images can handle CORS stuff
-          L.distortableImageOverlay(frag.url, {
+          // add images to map
+          const img = L.distortableImageOverlay(frag.url, {
             corners: corners,
-            actions: [L.RotateAction], // does RevertAction work too?
-            mode: 'rotate'
+            actions: [L.RotateAction], // does RevertAction work?
+            mode: 'rotate',
+            suppressToolbar: true
           }).addTo(this.map)
+          this.images.push(img)
+          this.ogPositions.push(corners)
         })
+      })
+    },
+    restoreOriginalPositions () {
+      this.images.forEach((img, i) => {
+        img.setCorners(this.ogPositions[i])
       })
     },
     async fetchAsync (url) {
@@ -103,7 +114,6 @@ export default {
     // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Matrix_math_for_the_web
     multiplyMatrixAndPoint (matrixObj, point) {
       const m = matrixObj._data
-      // Now set some simple names for the point
       let x = point[0],
         y = point[1],
         z = point[2],
