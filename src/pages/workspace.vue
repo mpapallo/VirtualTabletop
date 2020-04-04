@@ -44,9 +44,10 @@ export default {
       groups: [],
       map: null,
       imageGroup: null,
-      imageUrls: [],
+      images: [],
       origPositions: [],
-      corners: []
+      corners: [],
+      labels: null
     }
   },
   async mounted () {
@@ -88,12 +89,15 @@ export default {
             // points in leaflet are (lat, lng) so basically (y, x)
             corners.push([result[1] + ycenter, result[0] + xcenter])
           })
-          this.imageUrls.push(frag.url)
+          this.images.push({
+            id: frag.id,
+            url: frag.url
+          })
           this.origPositions.push(corners)
         })
       })
-      console.log(this.origPositions[0])
       this.repopulateImages()
+      this.repopulateLabels()
     },
     copyCorners () {
       let corners = []
@@ -111,9 +115,9 @@ export default {
       this.imageGroup = L.distortableCollection({
         suppressToolbar: true
       }).addTo(this.map)
-      this.imageUrls.forEach((url, index) => {
+      this.images.forEach((image, index) => {
         const corners = this.corners[index]
-        const img = L.distortableImageOverlay(url, {
+        const img = L.distortableImageOverlay(image.url, {
           corners: corners,
           actions: [L.RotateAction],
           mode: 'rotate',
@@ -122,13 +126,24 @@ export default {
         this.imageGroup.addLayer(img)
       })
     },
+    repopulateLabels () {
+      // must be called after repopulateImages so that this.corners is defined
+      this.labels = L.layerGroup().addTo(this.map)
+      this.images.forEach((image, index) => {
+        const corners = this.corners[index]
+        const newy = (corners[0][0] + corners[1][0] + corners[2][0] + corners[3][0]) / 4
+        const newx = (corners[0][1] + corners[1][1] + corners[2][1] + corners[3][1]) / 4
+        // create fragment ID label as permanent tooltip
+        const marker = L.marker([newy, newx], { icon: L.divIcon(), opacity: 0.01 })
+        marker.bindTooltip(image.id, { permanent: true, className: 'my-label', direction: 'top' })
+        this.labels.addLayer(marker)
+      })
+      const labels = { 'Labels': this.labels }
+      this.control = L.control.layers(null, labels).addTo(this.map)
+    },
     restoreOriginalPositions () {
       this.imageGroup.clearLayers()
-      console.log(this.origPositions[0])
       this.repopulateImages()
-      // this.imageGroup.eachLayer((img, index) => {
-      //   img.setCorners(this.origPositions[index])
-      // })
     },
     async fetchAsync (url) {
       try {
