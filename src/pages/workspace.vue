@@ -2,6 +2,7 @@
   <q-page padding>
 
     <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
+    <q-btn color='primary' label='Update Labels' @click=repopulateLabels />
 
     <div id='mymap'></div>
 
@@ -47,16 +48,19 @@ export default {
   data () {
     return {
       WORKSPACE_SERVER: 'http://localhost:8080/workspace',
-      id: 'WDC1_crate1',
+      id: 'WDC17', //'WDC1_crate1',
       width: 3840, // 1920,
       height: 2400, // 1200,
+      // store fetched workspace info
       groups: [],
       matches: [],
+      // store map info
       map: null,
-      imageGroup: null,
-      fragments: {},
-      corners: {},
-      labels: null
+      imageGroup: null, // L.distortableCollection
+      fragments: {},    // { fragID: { url, origPosition } }
+      corners: {},      // { fragID: [] }
+      labels: null,      // L.layerGroup
+      control: null
     }
   },
   async mounted () {
@@ -75,6 +79,7 @@ export default {
       })
       L.imageOverlay(url, bounds).addTo(this.map)
       this.map.fitBounds(bounds)
+      this.control = L.control.layers().addTo(this.map)
     },
     async fetchWorkspace (id) {
       const url = new URL(this.WORKSPACE_SERVER)
@@ -108,9 +113,8 @@ export default {
           }
         })
       })
-      console.log(this.fragments)
       this.repopulateImages()
-      this.repopulateLabels()
+      this.createLabels()
     },
     copyCorners () {
       // need to make a copy of original image coords so we can undo changes later
@@ -118,7 +122,7 @@ export default {
         const coords = this.fragments[frag].origPosition
         let t = []
         coords.forEach(p => {
-          t.push([p[0], p[1]])
+          t.push(L.latLng(p[0], p[1]))
         })
         this.corners[frag] = t
       }
@@ -139,24 +143,29 @@ export default {
         this.imageGroup.addLayer(img)
       }
     },
-    repopulateLabels () {
-      // must be called after repopulateImages so that this.corners is defined
+    createLabels () {
+      // once images have been manipulated, corners is now a list of L.LatLng objects
       this.labels = L.layerGroup().addTo(this.map)
       for (const frag in this.fragments) {
         const corners = this.corners[frag]
-        const newy = (corners[0][0] + corners[1][0] + corners[2][0] + corners[3][0]) / 4
-        const newx = (corners[0][1] + corners[1][1] + corners[2][1] + corners[3][1]) / 4
+        const newy = (corners[0].lat + corners[1].lat + corners[2].lat + corners[3].lat) / 4
+        const newx = (corners[0].lng + corners[1].lng + corners[2].lng + corners[3].lng) / 4
         // create fragment ID label as permanent tooltip
         const marker = L.marker([newy, newx], { icon: L.divIcon(), opacity: 0.01 })
         marker.bindTooltip(frag, { permanent: true, className: 'my-label', direction: 'top' })
         this.labels.addLayer(marker)
       }
-      const labels = { 'Labels': this.labels }
-      this.control = L.control.layers(null, labels).addTo(this.map)
+      this.control.addOverlay(this.labels, "Labels")
+    },
+    repopulateLabels () {
+      this.labels.clearLayers()
+      this.control.removeLayer(this.labels)
+      this.createLabels()
     },
     restoreOriginalPositions () {
       this.imageGroup.clearLayers()
       this.repopulateImages()
+      this.repopulateLabels()
     },
     async fetchAsync (url) {
       try {

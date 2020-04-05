@@ -87,13 +87,15 @@ module.exports.extendApp = function ({ app, ssr }) {
 
         // parse info for pair annotations
         let matches = [];
-        let match_num = 0;
-        result.XML.PairAnnotation.forEach(matchInfo => {
-          let m = matchInfo['$'] // { status, tgt, comment, src }
-          m.num = match_num
-          match_num += 1
-          matches.push(m)
-        })
+        if (result.XML.PairAnnotation) {
+          let match_num = 0;
+          result.XML.PairAnnotation.forEach(matchInfo => {
+            let m = matchInfo['$'] // { status, tgt, comment, src }
+            m.num = match_num
+            match_num += 1
+            matches.push(m)
+          })
+        }
 
         // parse info for each group of fragments
         let groups = [];
