@@ -5,10 +5,18 @@
 
     <div id='mymap'></div>
 
+    <div v-if='matches.length'>
+      <q-list bordered separated>
+        <q-item v-for='match in matches' v-bind:key='match.num'>
+          Match {{ match.num }}: {{ match.src }} - {{ match.tgt }} ({{ match.status }})
+        </q-item>
+      </q-list>
+    </div>
+
     <div v-if='groups.length'>
       <q-list bordered separated>
         <q-item v-for='group in groups' v-bind:key='group.num'>
-          {{ group.num }}
+           Group {{ group.num }}:
           <q-list dense>
             <q-item v-for='frag in group.fragments' v-bind:key='frag.num'>
               {{ frag.id }}
@@ -38,21 +46,23 @@ export default {
   },
   data () {
     return {
-      id: 'WDC17',
+      WORKSPACE_SERVER: 'http://localhost:8080/workspace',
+      id: 'WDC1_crate1',
       width: 3840, // 1920,
       height: 2400, // 1200,
       groups: [],
+      matches: [],
       map: null,
       imageGroup: null,
       images: [],
-      origPositions: [],
       corners: [],
       labels: null
     }
   },
   async mounted () {
     this.initMap()
-    this.getWorkspace(this.id)
+    await this.fetchWorkspace(this.id)
+    this.createTabletop()
   },
   methods: {
     initMap () {
@@ -66,11 +76,15 @@ export default {
       L.imageOverlay(url, bounds).addTo(this.map)
       this.map.fitBounds(bounds)
     },
-    async getWorkspace (id) {
-      const url = new URL('http://localhost:8080/workspace')
+    async fetchWorkspace (id) {
+      const url = new URL(this.WORKSPACE_SERVER)
       url.searchParams.append('id', id)
       const response = await this.fetchAsync(url)
       this.groups = response.groups
+      this.matches = response.matches
+    },
+    createTabletop () {
+      let imageNum = 0
       this.groups.forEach(group => {
         group.fragments.forEach(frag => {
           // apply given transformation (from original xml file) to img corners
@@ -90,18 +104,22 @@ export default {
             corners.push([result[1] + ycenter, result[0] + xcenter])
           })
           this.images.push({
+            num: imageNum,
             id: frag.id,
-            url: frag.url
+            url: frag.url,
+            origPosition: corners
           })
-          this.origPositions.push(corners)
+          imageNum += 1
         })
       })
       this.repopulateImages()
       this.repopulateLabels()
     },
     copyCorners () {
+      // need to make a copy of original image coords so we can undo changes later
       let corners = []
-      this.origPositions.forEach(coords => {
+      this.images.forEach(image => {
+        const coords = image.origPosition
         let t = []
         coords.forEach(p => {
           t.push([p[0], p[1]])

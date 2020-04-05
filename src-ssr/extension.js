@@ -72,7 +72,7 @@ module.exports.extendApp = function ({ app, ssr }) {
   // Workspaces
   //********************//
   const
-    util = require('util'),
+    // util = require('util'),
     // fetch = require('node-fetch'),
     fs = require('fs'),
     xml2js = require('xml2js'),
@@ -84,6 +84,17 @@ module.exports.extendApp = function ({ app, ssr }) {
     const parser = new xml2js.Parser();
     fs.readFile(__dirname + '/../src/assets/xml/' + workspace_id + '.xml', async (err, data) => {
       parser.parseString(data, async (err, result) => {
+
+        // parse info for pair annotations
+        let matches = [];
+        let match_num = 0;
+        result.XML.PairAnnotation.forEach(matchInfo => {
+          let m = matchInfo['$'] // { status, tgt, comment, src }
+          m.num = match_num
+          match_num += 1
+          matches.push(m)
+        })
+
         // parse info for each group of fragments
         let groups = [];
         let group_num = 0;
@@ -125,21 +136,22 @@ module.exports.extendApp = function ({ app, ssr }) {
               frag_obj.w = 0;
               frag_obj.h = 0;
             }
+
             // parse fragment transform matrix as array of vals
             const transform = f.XF[0].split(/\s/);
             let frag_xf = [];
             for (let i = 1; i < transform.length - 1; i++) {
               frag_xf.push(Number(parseFloat(transform[i])));
             }
-            frag_xf[3] *= 5;
-            frag_xf[7] *= 5;
+            // frag_xf[3] *= 5;
+            // frag_xf[7] *= 5;
             frag_obj.xf = frag_xf;
 
             group_obj.fragments.push(frag_obj);
           }
           groups.push(group_obj);
         }
-        res.send( { groups: groups } );
+        res.send( { groups: groups, matches: matches } );
       });
     });
   })
