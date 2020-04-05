@@ -54,8 +54,8 @@ export default {
       matches: [],
       map: null,
       imageGroup: null,
-      images: [],
-      corners: [],
+      fragments: {},
+      corners: {},
       labels: null
     }
   },
@@ -84,7 +84,6 @@ export default {
       this.matches = response.matches
     },
     createTabletop () {
-      let imageNum = 0
       this.groups.forEach(group => {
         group.fragments.forEach(frag => {
           // apply given transformation (from original xml file) to img corners
@@ -103,59 +102,55 @@ export default {
             // points in leaflet are (lat, lng) so basically (y, x)
             corners.push([result[1] + ycenter, result[0] + xcenter])
           })
-          this.images.push({
-            num: imageNum,
-            id: frag.id,
+          this.fragments[frag.id] = {
             url: frag.url,
             origPosition: corners
-          })
-          imageNum += 1
+          }
         })
       })
+      console.log(this.fragments)
       this.repopulateImages()
       this.repopulateLabels()
     },
     copyCorners () {
       // need to make a copy of original image coords so we can undo changes later
-      let corners = []
-      this.images.forEach(image => {
-        const coords = image.origPosition
+      for (const frag in this.fragments) {
+        const coords = this.fragments[frag].origPosition
         let t = []
         coords.forEach(p => {
           t.push([p[0], p[1]])
         })
-        corners.push(t)
-      })
-      this.corners = corners
+        this.corners[frag] = t
+      }
     },
     repopulateImages () {
       this.copyCorners()
       this.imageGroup = L.distortableCollection({
         suppressToolbar: true
       }).addTo(this.map)
-      this.images.forEach((image, index) => {
-        const corners = this.corners[index]
-        const img = L.distortableImageOverlay(image.url, {
+      for (const frag in this.fragments) {
+        const corners = this.corners[frag]
+        const img = L.distortableImageOverlay(this.fragments[frag].url, {
           corners: corners,
           actions: [L.RotateAction],
           mode: 'rotate',
           suppressToolbar: true
         })
         this.imageGroup.addLayer(img)
-      })
+      }
     },
     repopulateLabels () {
       // must be called after repopulateImages so that this.corners is defined
       this.labels = L.layerGroup().addTo(this.map)
-      this.images.forEach((image, index) => {
-        const corners = this.corners[index]
+      for (const frag in this.fragments) {
+        const corners = this.corners[frag]
         const newy = (corners[0][0] + corners[1][0] + corners[2][0] + corners[3][0]) / 4
         const newx = (corners[0][1] + corners[1][1] + corners[2][1] + corners[3][1]) / 4
         // create fragment ID label as permanent tooltip
         const marker = L.marker([newy, newx], { icon: L.divIcon(), opacity: 0.01 })
-        marker.bindTooltip(image.id, { permanent: true, className: 'my-label', direction: 'top' })
+        marker.bindTooltip(frag, { permanent: true, className: 'my-label', direction: 'top' })
         this.labels.addLayer(marker)
-      })
+      }
       const labels = { 'Labels': this.labels }
       this.control = L.control.layers(null, labels).addTo(this.map)
     },
