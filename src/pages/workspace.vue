@@ -2,7 +2,11 @@
   <q-page padding>
 
     <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
-    <q-btn color='primary' label='Update Labels' @click=repopulateLabels />
+    <q-btn color='primary' label='Update Labels' @click=repopulateAllLabels />
+
+    <div v-if='!matches.length'>
+      <p>There are no match annotations for this workspace.</p>
+    </div>
 
     <div id='mymap'></div>
 
@@ -48,7 +52,7 @@ export default {
   data () {
     return {
       WORKSPACE_SERVER: 'http://localhost:8080/workspace',
-      id: 'WDC17', //'WDC1_crate1',
+      id: 'WDC18',
       width: 3840, // 1920,
       height: 2400, // 1200,
       // store fetched workspace info
@@ -56,11 +60,12 @@ export default {
       matches: [],
       // store map info
       map: null,
-      imageGroup: null, // L.distortableCollection
-      fragments: {},    // { fragID: { url, origPosition } }
-      corners: {},      // { fragID: [] }
+      imageGroup: null,  // L.distortableCollection
+      fragments: {},     // { fragID: { url, origPosition } }
+      corners: {},       // { fragID: [] }
       labels: null,      // L.layerGroup
-      control: null
+      annotations: null, // L.layerGroup
+      control: null      // L.control.layers
     }
   },
   async mounted () {
@@ -115,6 +120,7 @@ export default {
       })
       this.repopulateImages()
       this.createLabels()
+      this.createAnnotations()
     },
     copyCorners () {
       // need to make a copy of original image coords so we can undo changes later
@@ -144,14 +150,11 @@ export default {
       }
     },
     createLabels () {
-      // once images have been manipulated, corners is now a list of L.LatLng objects
       this.labels = L.layerGroup().addTo(this.map)
       for (const frag in this.fragments) {
-        const corners = this.corners[frag]
-        const newy = (corners[0].lat + corners[1].lat + corners[2].lat + corners[3].lat) / 4
-        const newx = (corners[0].lng + corners[1].lng + corners[2].lng + corners[3].lng) / 4
+        const midpoint = this.getAveragePoint(this.corners[frag])
         // create fragment ID label as permanent tooltip
-        const marker = L.marker([newy, newx], { icon: L.divIcon(), opacity: 0.01 })
+        const marker = L.marker(midpoint, { icon: L.divIcon(), opacity: 0.01 })
         marker.bindTooltip(frag, { permanent: true, className: 'my-label', direction: 'top' })
         this.labels.addLayer(marker)
       }
@@ -162,10 +165,31 @@ export default {
       this.control.removeLayer(this.labels)
       this.createLabels()
     },
+    createAnnotations () {
+      this.annotations = L.layerGroup().addTo(this.map)
+      this.matches.forEach(point => {
+        const targetCorners = this.corners[point.tgt]
+        const sourceCorners = this.corners[point.src]
+        const midpoint = this.getAveragePoint(targetCorners.concat(sourceCorners))
+        // create match annotation label as permanent tooltip
+        const marker = L.marker(midpoint, { icon: L.divIcon(), opacity: 0.01 })
+        marker.bindTooltip(point.status, { permanent: true, className: 'match-' + point.status, direction: 'top' })
+        this.annotations.addLayer(marker)
+      })
+      this.control.addOverlay(this.annotations, "Match Info")
+    },
+    repopulateAllLabels () {
+      this.labels.clearLayers()
+      this.annotations.clearLayers()
+      this.control.removeLayer(this.labels)
+      this.control.removeLayer(this.annotations)
+      this.createLabels()
+      this.createAnnotations()
+    },
     restoreOriginalPositions () {
       this.imageGroup.clearLayers()
       this.repopulateImages()
-      this.repopulateLabels()
+      this.repopulateAllLabels()
     },
     async fetchAsync (url) {
       try {
@@ -175,6 +199,15 @@ export default {
       } catch (e) {
         console.error(e)
       }
+    },
+    getAveragePoint (coords) {
+      let sumLat = 0,
+        sumLng = 0
+      coords.forEach(point => {
+        sumLat += point.lat
+        sumLng += point.lng
+      })
+      return [sumLat / coords.length, sumLng / coords.length]
     },
     // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Matrix_math_for_the_web
     multiplyMatrixAndPoint (matrixObj, point) {
@@ -215,5 +248,18 @@ export default {
   border: 1px solid;
   margin-top: 50px;
   margin-bottom: 50px;
+}
+
+.match-Yes {
+  background: green;
+  border: 2px solid green;
+}
+.match-Maybe {
+  background: yellow;
+  border: 2px solid yellow;
+}
+.match-No {
+  background: red;
+  border: 2px solid red;
 }
 </style>

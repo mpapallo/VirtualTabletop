@@ -145,8 +145,8 @@ module.exports.extendApp = function ({ app, ssr }) {
             for (let i = 1; i < transform.length - 1; i++) {
               frag_xf.push(Number(parseFloat(transform[i])));
             }
-            // frag_xf[3] *= 5;
-            // frag_xf[7] *= 5;
+            frag_xf[3] *= 5;
+            frag_xf[7] *= 5;
             frag_obj.xf = frag_xf;
 
             group_obj.fragments.push(frag_obj);
