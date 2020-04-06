@@ -1,8 +1,18 @@
 <template>
   <q-page padding>
 
-    <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
-    <q-btn color='primary' label='Update Labels' @click=repopulateAllLabels />
+    <div class='row'>
+      <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
+      <q-btn color='primary' label='Update Labels' @click=repopulateAllLabels />
+      Degrees:
+      <q-input
+        v-model.number="degrees"
+        type="number"
+        filled
+        style="max-width: 200px"
+      />
+      <q-btn color='primary' label='Rotate Selected' @click=rotateSelectedImages />
+    </div>
 
     <div v-if='!matches.length'>
       <p>There are no match annotations for this workspace.</p>
@@ -55,6 +65,7 @@ export default {
       id: 'WDC18',
       width: 3840, // 1920,
       height: 2400, // 1200,
+      degrees: 0,
       // store fetched workspace info
       groups: [],
       matches: [],
@@ -134,6 +145,7 @@ export default {
       }
     },
     repopulateImages () {
+      this.images = []
       this.copyCorners()
       this.imageGroup = L.distortableCollection({
         suppressToolbar: true
@@ -190,6 +202,13 @@ export default {
       this.imageGroup.clearLayers()
       this.repopulateImages()
       this.repopulateAllLabels()
+    },
+    rotateSelectedImages () {
+      this.imageGroup.eachLayer(image => {
+        if (this.imageGroup.isCollected(image)) {
+          image.rotateBy(this.degrees)
+        }
+      })
     },
     async fetchAsync (url) {
       try {
