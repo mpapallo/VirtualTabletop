@@ -180,13 +180,16 @@ export default {
     createAnnotations () {
       this.annotations = L.layerGroup().addTo(this.map)
       this.matches.forEach(point => {
-        const targetCorners = this.corners[point.tgt]
-        const sourceCorners = this.corners[point.src]
-        const midpoint = this.getAveragePoint(targetCorners.concat(sourceCorners))
         // create match annotation label as permanent tooltip
-        const marker = L.marker(midpoint, { icon: L.divIcon(), opacity: 0.01 })
-        marker.bindTooltip(point.status, { permanent: true, className: 'match-' + point.status, direction: 'top' })
-        this.annotations.addLayer(marker)
+        const targetCorners = this.corners[point.tgt]
+        const mid1 = this.getAveragePoint(targetCorners)
+        const sourceCorners = this.corners[point.src]
+        const mid2 = this.getAveragePoint(sourceCorners)
+        // const midpoint = this.getAveragePoint(targetCorners.concat(sourceCorners))
+        // const marker = L.marker(midpoint, { icon: L.divIcon(), opacity: 0.01 })
+        const line = L.polyline([mid1, mid2])
+        line.bindTooltip(point.comment, { permanent: true, className: 'match-' + point.status, direction: 'top' })
+        this.annotations.addLayer(line)
       })
       this.control.addOverlay(this.annotations, "Match Info")
     },
@@ -206,7 +209,7 @@ export default {
     rotateSelectedImages () {
       this.imageGroup.eachLayer(image => {
         if (this.imageGroup.isCollected(image)) {
-          image.rotateBy(this.degrees)
+          image.rotateBy(this.degrees, 'deg')
         }
       })
     },
@@ -271,14 +274,14 @@ export default {
 
 .match-Yes {
   background: green;
-  border: 2px solid green;
+  border: 1px solid green;
 }
 .match-Maybe {
   background: yellow;
-  border: 2px solid yellow;
+  border: 1px solid yellow;
 }
 .match-No {
   background: red;
-  border: 2px solid red;
+  border: 1px solid red;
 }
 </style>
