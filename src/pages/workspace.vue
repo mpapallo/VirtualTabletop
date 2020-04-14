@@ -45,7 +45,7 @@
 </template>
 
 <script>
-import { matrix, multiply } from 'mathjs'
+import { matrix, multiply, sin, cos, unit } from 'mathjs'
 // leaflet
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -121,7 +121,7 @@ export default {
           points.forEach(p => {
             const result = this.multiplyMatrixAndPoint(newxf, p)
             // points in leaflet are (lat, lng) so basically (y, x)
-            corners.push([result[1] + ycenter, result[0] + xcenter])
+            corners.push(L.latLng(result[1] + ycenter, result[0] + xcenter))
           })
           this.fragments[frag.id] = {
             url: frag.url,
@@ -139,7 +139,7 @@ export default {
         const coords = this.fragments[frag].origPosition
         let t = []
         coords.forEach(p => {
-          t.push(L.latLng(p[0], p[1]))
+          t.push(L.latLng(p.lat, p.lng))
         })
         this.corners[frag] = t
       }
@@ -185,8 +185,6 @@ export default {
         const mid1 = this.getAveragePoint(targetCorners)
         const sourceCorners = this.corners[point.src]
         const mid2 = this.getAveragePoint(sourceCorners)
-        // const midpoint = this.getAveragePoint(targetCorners.concat(sourceCorners))
-        // const marker = L.marker(midpoint, { icon: L.divIcon(), opacity: 0.01 })
         const line = L.polyline([mid1, mid2])
         line.bindTooltip(point.comment, { permanent: true, className: 'match-' + point.status, direction: 'top' })
         this.annotations.addLayer(line)
@@ -207,10 +205,27 @@ export default {
       this.repopulateAllLabels()
     },
     rotateSelectedImages () {
+      const m = this.getRotationMatrix()
+      let collected = []
+      let midpoints = []
       this.imageGroup.eachLayer(image => {
         if (this.imageGroup.isCollected(image)) {
-          image.rotateBy(this.degrees, 'deg')
+          collected.push(image)
+          midpoints.push(this.getAveragePoint(image.getCorners()))
         }
+      })
+      const rotationPoint = this.getAveragePointFromList(midpoints),
+        rotLat = rotationPoint[0],
+        rotLng = rotationPoint[1]
+      collected.forEach(image => {
+        const c = image.getCorners()
+        let newCorners = []
+        c.forEach(point => {
+          const newLat = (point.lat - rotLat) * m[0] + (point.lng - rotLng) * m[1] + rotLat
+          const newLng = (point.lat - rotLat) * m[2] + (point.lng - rotLng) * m[3] + rotLng
+          newCorners.push(L.latLng(newLat, newLng))
+        })
+        image.setCorners(newCorners)
       })
     },
     async fetchAsync (url) {
@@ -228,6 +243,15 @@ export default {
       coords.forEach(point => {
         sumLat += point.lat
         sumLng += point.lng
+      })
+      return [sumLat / coords.length, sumLng / coords.length]
+    },
+    getAveragePointFromList (coords) {
+      let sumLat = 0,
+        sumLng = 0
+      coords.forEach(point => {
+        sumLat += point[0]
+        sumLng += point[1]
       })
       return [sumLat / coords.length, sumLng / coords.length]
     },
@@ -258,6 +282,11 @@ export default {
         [matrixB[12], matrixB[13], matrixB[14], matrixB[15]]
       ])
       return multiply(A, B)
+    },
+    getRotationMatrix() {
+      const c = cos(unit(this.degrees, 'deg'))
+      const s = sin(unit(this.degrees, 'deg'))
+      return [c, s * -1, s, c]
     }
   }
 }
