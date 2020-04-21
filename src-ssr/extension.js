@@ -72,8 +72,8 @@ module.exports.extendApp = function ({ app, ssr }) {
   // Workspaces
   //********************//
   const
-    // util = require('util'),
-    // fetch = require('node-fetch'),
+    util = require('util'),
+    fetch = require('node-fetch'),
     fs = require('fs'),
     xml2js = require('xml2js'),
     probe = require('probe-image-size');
@@ -81,110 +81,114 @@ module.exports.extendApp = function ({ app, ssr }) {
 
   // Workspace endpoint, query must contain id of workspace.
   app.get('/workspace', async (req, res) => {
-    const workspace_id = req.query.id;
-    const parser = new xml2js.Parser();
-    fs.readFile(__dirname + '/../src/assets/xml/' + workspace_id + '.xml', async (err, data) => {
-      parser.parseString(data, async (err, result) => {
+    // fetch workspace xml file served as JSON
+    const url = new URL('http://localhost:3000/get-xml/');
+    url.searchParams.append('id', req.query.id);
+    let response = await fetch(url);
+    let data = await response.json();
 
-        // parse info for pair annotations
-        let matches = [];
-        if (result.XML.PairAnnotation) {
-          let match_num = 0;
-          result.XML.PairAnnotation.forEach(matchInfo => {
-            let m = matchInfo['$'] // { status, tgt, comment, src }
-            m.num = match_num
-            match_num += 1
-            matches.push(m)
-          })
+    // parse info for pair annotations
+    const matches = [];
+    if (data.XML.PairAnnotation) {
+      let match_num = 0;
+      data.XML.PairAnnotation.forEach(match => {
+        const m = match // { status, tgt, comment, src }
+        m.num = match_num
+        match_num += 1
+        matches.push(m)
+      })
+    }
+
+    // parse info for each group of fragments
+    const groups = [];
+    let group_num = 0;
+    for (let g_index = 0; g_index < data.XML.group.length; g_index ++) {
+      const g = data.XML.group[g_index];
+      let group_obj = {};
+      group_obj.num = group_num;
+      group_num += 1;
+
+      // parse group transform matrix as array of vals
+      const group_transform = g.XF['$t'].split(/\s/);
+      let group_xf = [];
+      group_transform.forEach(num => {
+        group_xf.push(Number(parseFloat(num)));
+      })
+      group_xf[3] *= 5;
+      group_xf[7] *= 5;
+      group_obj.xf = group_xf;
+
+      // parse each fragment info within group
+      group_obj.fragments = [];
+      let frag_num = 0;
+      for (let f_index = 0; f_index < g.fragment.length; f_index ++) {
+        // extract fragment info from XML
+        const f = g.fragment[f_index];
+        const frag_obj = extractFragInfo(f, frag_num);
+        console.log(frag_obj);
+        frag_num += 1;
+        // get dimension info
+        try {
+          const result = await probe(frag_obj.url);
+          frag_obj.w = result.width;
+          frag_obj.h = result.height;
+        } catch (e) {
+          frag_obj.w = 0;
+          frag_obj.h = 0;
         }
+        // push fragment to group
+        group_obj.fragments.push(frag_obj);
+      }
 
-        // parse info for each group of fragments
-        let groups = [];
-        let group_num = 0;
-        for (let g_index = 0; g_index < result.XML.group.length; g_index ++) {
-          const g = result.XML.group[g_index];
-          let group_obj = {};
-          group_obj.num = group_num;
-          group_num += 1;
+      // push group to groups list
+      groups.push(group_obj);
+    }
 
-          // parse group transform matrix as array of vals
-          const group_transform = g.XF[0].split(/\s/);
-          let group_xf = [];
-          for (let i = 1; i < group_transform.length - 1; i++) {
-            group_xf.push(Number(parseFloat(group_transform[i])));
-          }
-          // group_xf[3] *= 5;
-          // group_xf[7] *= 5;
-          group_obj.xf = group_xf;
+    // parse info for each ungrouped fragment
+    let fragments = [];
+    for (let f_index = 0; f_index < data.XML.fragment.length; f_index ++) {
+      const f = data.XML.fragment[f_index]
+      // extract fragment info from XML
+      const frag_obj = extractFragInfo(f, f_index);
+      // get dimension info
+      try {
+        const result = await probe(frag_obj.url);
+        frag_obj.w = result.width;
+        frag_obj.h = result.height;
+      } catch (e) {
+        frag_obj.w = 0;
+        frag_obj.h = 0;
+      }
+      // push to fragment list
+      fragments.push(frag_obj);
+    }
 
-          // parse each fragment info within group
-          group_obj.fragments = [];
-          let frag_num = 0;
-          for (let f_index = 0; f_index < g.fragment.length; f_index ++) {
-            // extract fragment info from XML
-            const f = g.fragment[f_index];
-            const frag_obj = extractFragInfo(f, frag_num);
-            frag_num += 1;
-            // get dimension info
-            try {
-              const result = await probe(frag_obj.url);
-              frag_obj.w = result.width;
-              frag_obj.h = result.height;
-            } catch (e) {
-              frag_obj.w = 0;
-              frag_obj.h = 0;
-            }
-            // push fragment to group
-            group_obj.fragments.push(frag_obj);
-          }
+    console.log(groups);
+    console.log(fragments);
 
-          // push group to groups list
-          groups.push(group_obj);
-        }
-
-        // parse info for each ungrouped fragment
-        let fragments = [];
-        for (let f_index = 0; f_index < result.XML.fragment.length; f_index ++) {
-          const f = result.XML.fragment[f_index]
-          // extract fragment info from XML
-          const frag_obj = extractFragInfo(f, f_index);
-          // get dimension info
-          try {
-            const result = await probe(frag_obj.url);
-            frag_obj.w = result.width;
-            frag_obj.h = result.height;
-          } catch (e) {
-            frag_obj.w = 0;
-            frag_obj.h = 0;
-          }
-          // push to fragment list
-          fragments.push(frag_obj);
-        }
-
-        res.send( { groups: groups, fragments: fragments, matches: matches } );
-      });
-    });
-  })
+    // send extracted info
+    res.send( { groups: groups, fragments: fragments, matches: matches } );
+  });
 
   const extractFragInfo = function (f, num) {
     let frag_obj = {};
     frag_obj.num = num;
 
     // parse id for url
-    frag_obj.id = f['$'].ID;
+    frag_obj.id = f.ID;
     frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color-masked.png';
 
     // parse fragment transform matrix as array of vals
-    const transform = f.XF[0].split(/\s/);
     let frag_xf = [];
-    for (let i = 1; i < transform.length - 1; i++) {
-      frag_xf.push(Number(parseFloat(transform[i])));
-    }
-    // frag_xf[3] *= 5;
-    // frag_xf[7] *= 5;
+    const transform = f.XF['$t'].split(/\s/);
+    transform.forEach(num => {
+      frag_xf.push(Number(parseFloat(num)));
+    })
+    frag_xf[3] *= 5;
+    frag_xf[7] *= 5;
     frag_obj.xf = frag_xf;
 
     return frag_obj;
-  }
+  };
 
 };

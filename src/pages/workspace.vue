@@ -3,7 +3,6 @@
 
     <div class='row'>
       <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
-      Degrees:
       <q-input
         label="Degrees"
         v-model.number="degrees"
@@ -99,7 +98,7 @@ export default {
       const bounds = [[0, 0], [this.height, this.width]]
       this.map = L.map('mymap', {
         crs: L.CRS.Simple,
-        minZoom: -1,
+        minZoom: -3,
         maxZoom: 0
       })
       L.imageOverlay(url, bounds).addTo(this.map)
