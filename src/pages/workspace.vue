@@ -14,10 +14,6 @@
       <q-btn color='primary' label='Rotate Selected' @click=rotateSelectedImages />
     </div>
 
-    <div v-if='!matches.length'>
-      <p>There are no match annotations for this workspace.</p>
-    </div>
-
     <div id='mymap'></div>
 
     <div v-if='matches.length'>
@@ -28,12 +24,24 @@
       </q-list>
     </div>
 
+    <div v-if='!matches.length'>
+      <p>There are no match annotations for this workspace.</p>
+    </div>
+
     <div v-if='groups.length'>
       <q-list bordered separated>
         <q-item v-for='group in groups' v-bind:key='group.num'>
            Group {{ group.num }}:
           <q-list dense>
             <q-item v-for='frag in group.fragments' v-bind:key='frag.num'>
+              {{ frag.id }}
+            </q-item>
+          </q-list>
+        </q-item>
+        <q-item>
+          Ungrouped
+          <q-list dense>
+            <q-item v-for='frag in ungrouped' v-bind:key='frag.num'>
               {{ frag.id }}
             </q-item>
           </q-list>
@@ -62,12 +70,13 @@ export default {
   data () {
     return {
       WORKSPACE_SERVER: 'http://localhost:8080/workspace',
-      id: 'WDC18',
+      id: 'WDC12_BAK32',
       width: 3840, // 1920,
       height: 2400, // 1200,
       degrees: 0,
       // store fetched workspace info
       groups: [],
+      ungrouped: [],
       matches: [],
       // store map info
       map: null,
@@ -102,36 +111,43 @@ export default {
       url.searchParams.append('id', id)
       const response = await this.fetchAsync(url)
       this.groups = response.groups
+      this.ungrouped = response.fragments
       this.matches = response.matches
     },
     createTabletop () {
       this.groups.forEach(group => {
         group.fragments.forEach(frag => {
-          // apply given transformation (from original xml file) to img corners
-          const xcenter = this.width / 2
-          const ycenter = this.height / 2
-          const points = [
-            [0 - frag.w / 4, 0 + frag.h / 4, 0, 1],
-            [0 + frag.w / 4, 0 + frag.h / 4, 0, 1],
-            [0 - frag.w / 4, 0 - frag.h / 4, 0, 1],
-            [0 + frag.w / 4, 0 - frag.h / 4, 0, 1]
-          ]
-          const newxf = this.multiplyMatrices(group.xf, frag.xf)
-          const corners = []
-          points.forEach(p => {
-            const result = this.multiplyMatrixAndPoint(newxf, p)
-            // points in leaflet are (lat, lng) so basically (y, x)
-            corners.push(L.latLng(result[1] + ycenter, result[0] + xcenter))
-          })
-          this.fragments[frag.id] = {
-            url: frag.url,
-            origPosition: corners
-          }
+          const newxf = multiply(this.convertToMatrixObj(group.xf), this.convertToMatrixObj(frag.xf))
+          this.extractFragmentInfo(frag, newxf)
         })
+      })
+      this.ungrouped.forEach(frag => {
+          this.extractFragmentInfo(frag, this.convertToMatrixObj(frag.xf))
       })
       this.repopulateImages()
       this.createLabels()
       this.createAnnotations()
+    },
+    extractFragmentInfo (frag, xf) {
+      // apply given transformation (from original xml file) to img corners
+      const xcenter = this.width / 2
+      const ycenter = this.height / 2
+      const points = [
+        [0 - frag.w / 4, 0 + frag.h / 4, 0, 1],
+        [0 + frag.w / 4, 0 + frag.h / 4, 0, 1],
+        [0 - frag.w / 4, 0 - frag.h / 4, 0, 1],
+        [0 + frag.w / 4, 0 - frag.h / 4, 0, 1]
+      ]
+      const corners = []
+      points.forEach(p => {
+        const result = this.multiplyMatrixAndPoint(xf, p)
+        // points in leaflet are (lat, lng) so basically (y, x)
+        corners.push(L.latLng(result[1] + ycenter, result[0] + xcenter))
+      })
+      this.fragments[frag.id] = {
+        url: frag.url,
+        origPosition: corners
+      }
     },
     copyCorners () {
       // need to make a copy of original image coords so we can undo changes later
@@ -160,6 +176,7 @@ export default {
         })
         this.imageGroup.addLayer(img)
       }
+      // this.imageGroup.on('click', this.repopulateAllLabels(), this)
     },
     createLabels () {
       this.labels = L.layerGroup().addTo(this.map)
@@ -170,12 +187,7 @@ export default {
         marker.bindTooltip(frag, { permanent: true, className: 'my-label', direction: 'top' })
         this.labels.addLayer(marker)
       }
-      this.control.addOverlay(this.labels, "Labels")
-    },
-    repopulateLabels () {
-      this.labels.clearLayers()
-      this.control.removeLayer(this.labels)
-      this.createLabels()
+      this.control.addOverlay(this.labels, 'Labels')
     },
     createAnnotations () {
       this.annotations = L.layerGroup().addTo(this.map)
@@ -189,9 +201,12 @@ export default {
         line.bindTooltip(point.comment, { permanent: true, className: 'match-' + point.status, direction: 'top' })
         this.annotations.addLayer(line)
       })
-      this.control.addOverlay(this.annotations, "Match Info")
+      this.control.addOverlay(this.annotations, 'Match Info')
     },
     repopulateAllLabels () {
+      if (!this.labels || !this.annotations) {
+        return
+      }
       this.labels.clearLayers()
       this.annotations.clearLayers()
       this.control.removeLayer(this.labels)
@@ -214,9 +229,7 @@ export default {
           midpoints.push(this.getAveragePoint(image.getCorners()))
         }
       })
-      const rotationPoint = this.getAveragePointFromList(midpoints),
-        rotLat = rotationPoint[0],
-        rotLng = rotationPoint[1]
+      const [rotLat, rotLng] = this.getAveragePointFromList(midpoints)
       collected.forEach(image => {
         const c = image.getCorners()
         let newCorners = []
@@ -268,25 +281,18 @@ export default {
       let resultW = (x * m[3][0]) + (y * m[3][1]) + (z * m[3][2]) + (w * m[3][3])
       return [resultX, resultY, resultZ, resultW]
     },
-    multiplyMatrices (matrixA, matrixB) {
-      const A = matrix([
-        [matrixA[0], matrixA[1], matrixA[2], matrixA[3]],
-        [matrixA[4], matrixA[5], matrixA[6], matrixA[7]],
-        [matrixA[8], matrixA[9], matrixA[10], matrixA[11]],
-        [matrixA[12], matrixA[13], matrixA[14], matrixA[15]]
-      ])
-      const B = matrix([
-        [matrixB[0], matrixB[1], matrixB[2], matrixB[3]],
-        [matrixB[4], matrixB[5], matrixB[6], matrixB[7]],
-        [matrixB[8], matrixB[9], matrixB[10], matrixB[11]],
-        [matrixB[12], matrixB[13], matrixB[14], matrixB[15]]
-      ])
-      return multiply(A, B)
-    },
-    getRotationMatrix() {
+    getRotationMatrix () {
       const c = cos(unit(this.degrees, 'deg'))
       const s = sin(unit(this.degrees, 'deg'))
       return [c, s * -1, s, c]
+    },
+    convertToMatrixObj (m) {
+      return matrix([
+        [m[0], m[1], m[2], m[3]],
+        [m[4], m[5], m[6], m[7]],
+        [m[8], m[9], m[10], m[11]],
+        [m[12], m[13], m[14], m[15]]
+      ])
     }
   }
 }
