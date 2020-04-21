@@ -3,9 +3,9 @@
 
     <div class='row'>
       <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
-      <q-btn color='primary' label='Update Labels' @click=repopulateAllLabels />
       Degrees:
       <q-input
+        label="Degrees"
         v-model.number="degrees"
         type="number"
         filled
@@ -105,14 +105,15 @@ export default {
       L.imageOverlay(url, bounds).addTo(this.map)
       this.map.fitBounds(bounds)
       this.control = L.control.layers().addTo(this.map)
+      this.map.on('overlayadd', this.repopulateAllLabels, this)
     },
     async fetchWorkspace (id) {
       const url = new URL(this.WORKSPACE_SERVER)
       url.searchParams.append('id', id)
-      const response = await this.fetchAsync(url)
-      this.groups = response.groups
-      this.ungrouped = response.fragments
-      this.matches = response.matches
+      const data = await this.fetchAsync(url)
+      this.groups = data.groups
+      this.ungrouped = data.fragments
+      this.matches = data.matches
     },
     createTabletop () {
       this.groups.forEach(group => {
@@ -175,8 +176,8 @@ export default {
           suppressToolbar: true
         })
         this.imageGroup.addLayer(img)
+        img.on('update', this.repopulateAllLabels, this)
       }
-      // this.imageGroup.on('click', this.repopulateAllLabels(), this)
     },
     createLabels () {
       this.labels = L.layerGroup().addTo(this.map)
@@ -204,15 +205,16 @@ export default {
       this.control.addOverlay(this.annotations, 'Match Info')
     },
     repopulateAllLabels () {
-      if (!this.labels || !this.annotations) {
-        return
+      if (this.map.hasLayer(this.labels)) {
+        this.labels.clearLayers()
+        this.control.removeLayer(this.labels)
+        this.createLabels()
       }
-      this.labels.clearLayers()
-      this.annotations.clearLayers()
-      this.control.removeLayer(this.labels)
-      this.control.removeLayer(this.annotations)
-      this.createLabels()
-      this.createAnnotations()
+      if (this.map.hasLayer(this.annotations)) {
+        this.annotations.clearLayers()
+        this.control.removeLayer(this.annotations)
+        this.createAnnotations()
+      }
     },
     restoreOriginalPositions () {
       this.imageGroup.clearLayers()
