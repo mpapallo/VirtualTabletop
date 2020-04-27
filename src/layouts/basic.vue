@@ -9,13 +9,13 @@
         <q-toolbar-title>
           Virtual Tabletop
         </q-toolbar-title>
+
+        <q-tabs align="right">
+          <q-route-tab to="/select" label="Select A Workspace" />
+          <q-route-tab to="/about" label="About" />
+        </q-tabs>
       </q-toolbar>
 
-      <q-tabs align="left">
-        <q-route-tab to="/image" label="Select A Workspace" />
-        <q-route-tab to="/page2" label="Page Two" />
-        <q-route-tab to="/about" label="About" />
-      </q-tabs>
     </q-header>
 
     <q-page-container>

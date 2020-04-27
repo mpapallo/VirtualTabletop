@@ -125,7 +125,6 @@ module.exports.extendApp = function ({ app, ssr }) {
         // extract fragment info from XML
         const f = g.fragment[f_index];
         const frag_obj = extractFragInfo(f, frag_num);
-        console.log(frag_obj);
         frag_num += 1;
         // get dimension info
         try {
@@ -162,9 +161,6 @@ module.exports.extendApp = function ({ app, ssr }) {
       // push to fragment list
       fragments.push(frag_obj);
     }
-
-    console.log(groups);
-    console.log(fragments);
 
     // send extracted info
     res.send( { groups: groups, fragments: fragments, matches: matches } );

@@ -1,5 +1,6 @@
 <template>
   <q-page padding>
+    <h2>{{ id }}</h2>
 
     <div class='row'>
       <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
@@ -66,10 +67,13 @@ export default {
   name: 'Workspace',
   components: {
   },
+  props: {
+    id: String
+  },
   data () {
     return {
       WORKSPACE_SERVER: 'http://localhost:8080/workspace',
-      id: 'WDC12_BAK32',
+      // id: 'WDC1_crate2',
       width: 3840, // 1920,
       height: 2400, // 1200,
       degrees: 0,
@@ -89,7 +93,7 @@ export default {
   },
   async mounted () {
     this.initMap()
-    await this.fetchWorkspace(this.id)
+    await this.fetchWorkspace()
     this.createTabletop()
   },
   methods: {
@@ -106,9 +110,9 @@ export default {
       this.control = L.control.layers().addTo(this.map)
       this.map.on('overlayadd', this.repopulateAllLabels, this)
     },
-    async fetchWorkspace (id) {
+    async fetchWorkspace () {
       const url = new URL(this.WORKSPACE_SERVER)
-      url.searchParams.append('id', id)
+      url.searchParams.append('id', this.id)
       const data = await this.fetchAsync(url)
       this.groups = data.groups
       this.ungrouped = data.fragments
