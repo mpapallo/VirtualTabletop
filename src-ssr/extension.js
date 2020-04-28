@@ -81,11 +81,13 @@ module.exports.extendApp = function ({ app, ssr }) {
 
   // Workspace endpoint, query must contain id of workspace.
   app.get('/workspace', async (req, res) => {
+    const folder = req.query.folder;
     const workspace_id = req.query.id;
-    if (!workspace_id) { return }
+    if (!(folder && workspace_id)) { return }
     // fetch workspace xml file served as JSON
     const url = new URL('http://localhost:3000/get-xml/');
-    url.searchParams.append('id', workspace_id);
+    // url.searchParams.append('folder', folder);
+    url.searchParams.append('id', folder + '/' + workspace_id);
     let response = await fetch(url);
     let data = await response.json();
 
@@ -103,31 +105,57 @@ module.exports.extendApp = function ({ app, ssr }) {
 
     // parse info for each group of fragments
     const groups = [];
-    let group_num = 0;
-    for (let g_index = 0; g_index < data.XML.group.length; g_index ++) {
-      const g = data.XML.group[g_index];
-      let group_obj = {};
-      group_obj.num = group_num;
-      group_num += 1;
+    if (data.XML.group) {
+      let group_num = 0;
+      for (let g_index = 0; g_index < data.XML.group.length; g_index ++) {
+        const g = data.XML.group[g_index];
+        let group_obj = {};
+        group_obj.num = group_num;
+        group_num += 1;
 
-      // parse group transform matrix as array of vals
-      const group_transform = g.XF['$t'].split(/\s/);
-      let group_xf = [];
-      group_transform.forEach(num => {
-        group_xf.push(Number(parseFloat(num)));
-      })
-      group_xf[3] *= 5;
-      group_xf[7] *= 5;
-      group_obj.xf = group_xf;
+        // parse group transform matrix as array of vals
+        const group_transform = g.XF['$t'].split(/\s/);
+        let group_xf = [];
+        group_transform.forEach(num => {
+          group_xf.push(Number(parseFloat(num)));
+        })
+        group_xf[3] *= 5;
+        group_xf[7] *= 5;
+        group_obj.xf = group_xf;
 
-      // parse each fragment info within group
-      group_obj.fragments = [];
-      let frag_num = 0;
-      for (let f_index = 0; f_index < g.fragment.length; f_index ++) {
+        // parse each fragment info within group
+        group_obj.fragments = [];
+        let frag_num = 0;
+        for (let f_index = 0; f_index < g.fragment.length; f_index ++) {
+          // extract fragment info from XML
+          const f = g.fragment[f_index];
+          const frag_obj = extractFragInfo(f, frag_num);
+          frag_num += 1;
+          // get dimension info
+          try {
+            const result = await probe(frag_obj.url);
+            frag_obj.w = result.width;
+            frag_obj.h = result.height;
+          } catch (e) {
+            frag_obj.w = 0;
+            frag_obj.h = 0;
+          }
+          // push fragment to group
+          group_obj.fragments.push(frag_obj);
+        }
+
+        // push group to groups list
+        groups.push(group_obj);
+      }
+    }
+
+    // parse info for each ungrouped fragment
+    let fragments = [];
+    if (data.XML.fragment) {
+      for (let f_index = 0; f_index < data.XML.fragment.length; f_index ++) {
+        const f = data.XML.fragment[f_index]
         // extract fragment info from XML
-        const f = g.fragment[f_index];
-        const frag_obj = extractFragInfo(f, frag_num);
-        frag_num += 1;
+        const frag_obj = extractFragInfo(f, f_index);
         // get dimension info
         try {
           const result = await probe(frag_obj.url);
@@ -137,33 +165,11 @@ module.exports.extendApp = function ({ app, ssr }) {
           frag_obj.w = 0;
           frag_obj.h = 0;
         }
-        // push fragment to group
-        group_obj.fragments.push(frag_obj);
+        // push to fragment list
+        fragments.push(frag_obj);
       }
-
-      // push group to groups list
-      groups.push(group_obj);
     }
-
-    // parse info for each ungrouped fragment
-    let fragments = [];
-    for (let f_index = 0; f_index < data.XML.fragment.length; f_index ++) {
-      const f = data.XML.fragment[f_index]
-      // extract fragment info from XML
-      const frag_obj = extractFragInfo(f, f_index);
-      // get dimension info
-      try {
-        const result = await probe(frag_obj.url);
-        frag_obj.w = result.width;
-        frag_obj.h = result.height;
-      } catch (e) {
-        frag_obj.w = 0;
-        frag_obj.h = 0;
-      }
-      // push to fragment list
-      fragments.push(frag_obj);
-    }
-
+    
     // send extracted info
     res.send( { groups: groups, fragments: fragments, matches: matches } );
   });

@@ -1,6 +1,6 @@
 <template>
   <div class='q-px-lg'>
-    <h4>{{ id }}</h4>
+    <h4>{{folder}}/{{ id }}</h4>
 
     <div class='row justify-between'>
       <div class='col-10' id='mymap'></div>
@@ -17,7 +17,8 @@
       </div>
     </div>
 
-    <div style='width: 83%'>
+    <div class='row'>
+    <div class='col-10'>
       <q-card>
         <q-tabs active-color='primary' indicator-color='primary' align='justify' v-model='tab' >
           <q-tab name='matches' label='Matches' />
@@ -34,7 +35,7 @@
         </q-tab-panels>
       </q-card>
     </div>
-
+    </div>
   </div>
 </template>
 
@@ -43,17 +44,13 @@ import MatchTable from 'components/MatchTable.vue'
 import GroupTable from 'components/GroupTable.vue'
 
 import { matrix, multiply, sin, cos, unit } from 'mathjs'
-// leaflet
+// leaflet and plugins
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-toolbar/dist/leaflet.toolbar.css'
 import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
 require('leaflet-toolbar')
 require('leaflet-distortableimage')
-
-// leaflet add-ons
-//import 'leaflet-toolbar/dist/leaflet.toolbar.js'
-//import 'leaflet-distortableimage/dist/leaflet.distortableimage.js'
 
 export default {
   name: 'Workspace',
@@ -66,14 +63,18 @@ export default {
       type: String,
       required: true
     },
+    folder: {
+      type: String,
+      required: true
+    }
   },
   data () {
     return {
-      tab: 'matches',
       WORKSPACE_SERVER: 'http://localhost:8080/workspace',
-      width: 3840, // 1920,
-      height: 2400, // 1200,
+      width: 3840,
+      height: 2400,
       degrees: 0,
+      tab: 'matches',
       // store fetched workspace info
       groups: [],
       ungrouped: [],
@@ -82,7 +83,7 @@ export default {
       map: null,
       imageGroup: null,  // L.distortableCollection
       fragments: {},     // { fragID: { url, origPosition } }
-      corners: {},       // { fragID: [] }
+      corners: {},       // { fragID: [L.LatLng x 4] }
       labels: null,      // L.layerGroup
       annotations: null, // L.layerGroup
       control: null      // L.control.layers
@@ -109,6 +110,7 @@ export default {
     },
     async fetchWorkspace () {
       const url = new URL(this.WORKSPACE_SERVER)
+      url.searchParams.append('folder', this.folder)
       url.searchParams.append('id', this.id)
       const data = await this.fetchAsync(url)
       this.groups = data.groups
@@ -319,4 +321,6 @@ export default {
   background: red;
   border: 1px solid red;
 }
+
+tr:nth-child(even) { background-color: #f2f2f2; }
 </style>

@@ -17,7 +17,7 @@
           </q-list>
         </td>
       </tr>
-      <tr>
+      <tr v-if='ungrouped.length'>
         <td>Ungrouped</td>
         <td>
           <q-list dense>
@@ -46,6 +46,3 @@ export default {
   }
 }
 </script>
-
-<style>
-</style>
