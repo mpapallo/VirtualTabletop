@@ -29,9 +29,11 @@
     </q-dialog>
 
     <div class='row justify-between'>
+
       <div class='col-10' id='mymap'></div>
+
       <div class='col-md-2'>
-        <q-btn color='primary' size='lg' class='q-ma-sm'
+        <q-btn color='primary' size='lg' class='q-mx-sm q-mb-lg'
           label='Undo Changes'
           @click='restoreOriginalPositions' />
         <q-input filled type='number' class='q-ma-sm'
@@ -71,10 +73,11 @@ import GroupTable from 'components/GroupTable.vue'
 
 import { matrix, multiply, sin, cos, unit } from 'mathjs'
 // leaflet and plugins
-import L from 'leaflet'
+// import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-toolbar/dist/leaflet.toolbar.css'
 import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
+const L = require('leaflet')
 require('leaflet-toolbar')
 require('leaflet-distortableimage')
 
@@ -97,8 +100,8 @@ export default {
   data () {
     return {
       WORKSPACE_SERVER: 'http://localhost:8080/workspace',
-      width: 3840,
-      height: 2400,
+      width: 7680,
+      height: 4800,
       degrees: 0,
       tab: 'matches',
       howto: false,
@@ -113,7 +116,7 @@ export default {
       corners: {},       // { fragID: [L.LatLng x 4] }
       labels: null,      // L.layerGroup
       annotations: null, // L.layerGroup
-      control: null      // L.control.layers
+      control: null       // L.control.layers
     }
   },
   async mounted () {
@@ -160,8 +163,8 @@ export default {
     },
     extractFragmentInfo (frag, xf) {
       // apply given transformation (from original xml file) to img corners
-      const xcenter = this.width / 2
-      const ycenter = this.height / 2
+      const xcenter = this.width / 4
+      const ycenter = this.height / 4
       const points = [
         [0 - frag.w / 4, 0 + frag.h / 4, 0, 1],
         [0 + frag.w / 4, 0 + frag.h / 4, 0, 1],

@@ -1,5 +1,5 @@
 <template>
-  <div class='q-px-md'>
+  <div class='q-px-md q-pb-xl'>
     <h4>crates/</h4>
     <div class="q-px-sm row items-start q-gutter-md" v-if='crates.length'>
       <q-card v-for='crate in crates' v-bind:key='crate'>

@@ -95,7 +95,11 @@ module.exports.extendApp = function ({ app, ssr }) {
     const matches = [];
     if (data.XML.PairAnnotation) {
       let match_num = 0;
-      data.XML.PairAnnotation.forEach(match => {
+      let annotations = data.XML.PairAnnotation
+      if (!Array.isArray(data.XML.PairAnnotation)) {
+        annotations = [data.XML.PairAnnotation]
+      }
+      annotations.forEach(match => {
         const m = match // { status, tgt, comment, src }
         m.num = match_num
         match_num += 1
@@ -106,9 +110,13 @@ module.exports.extendApp = function ({ app, ssr }) {
     // parse info for each group of fragments
     const groups = [];
     if (data.XML.group) {
+      let groupsdata = data.XML.group
+      if (!Array.isArray(data.XML.group)) {
+        groupsdata = [data.XML.group]
+      }
       let group_num = 0;
-      for (let g_index = 0; g_index < data.XML.group.length; g_index ++) {
-        const g = data.XML.group[g_index];
+      for (let g_index = 0; g_index < groupsdata.length; g_index ++) {
+        const g = groupsdata[g_index];
         let group_obj = {};
         group_obj.num = group_num;
         group_num += 1;
@@ -152,8 +160,12 @@ module.exports.extendApp = function ({ app, ssr }) {
     // parse info for each ungrouped fragment
     let fragments = [];
     if (data.XML.fragment) {
-      for (let f_index = 0; f_index < data.XML.fragment.length; f_index ++) {
-        const f = data.XML.fragment[f_index]
+      let fragsdata = data.XML.fragment
+      if (!Array.isArray(data.XML.fragment)) {
+        fragsdata = [data.XML.fragment]
+      }
+      for (let f_index = 0; f_index < fragsdata.length; f_index ++) {
+        const f = fragsdata[f_index]
         // extract fragment info from XML
         const frag_obj = extractFragInfo(f, f_index);
         // get dimension info
@@ -169,7 +181,7 @@ module.exports.extendApp = function ({ app, ssr }) {
         fragments.push(frag_obj);
       }
     }
-    
+
     // send extracted info
     res.send( { groups: groups, fragments: fragments, matches: matches } );
   });
