@@ -81,9 +81,11 @@ module.exports.extendApp = function ({ app, ssr }) {
 
   // Workspace endpoint, query must contain id of workspace.
   app.get('/workspace', async (req, res) => {
+    const workspace_id = req.query.id;
+    if (!workspace_id) { return }
     // fetch workspace xml file served as JSON
     const url = new URL('http://localhost:3000/get-xml/');
-    url.searchParams.append('id', req.query.id);
+    url.searchParams.append('id', workspace_id);
     let response = await fetch(url);
     let data = await response.json();
 

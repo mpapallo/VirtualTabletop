@@ -1,79 +1,76 @@
 <template>
-  <q-page padding>
-    <h2>{{ id }}</h2>
+  <div class='q-px-lg'>
+    <h4>{{ id }}</h4>
 
-    <div class='row'>
-      <q-btn color='primary' label='Undo Changes' @click=restoreOriginalPositions />
-      <q-input
-        label="Degrees"
-        v-model.number="degrees"
-        type="number"
-        filled
-        style="max-width: 200px"
-      />
-      <q-btn color='primary' label='Rotate Selected' @click=rotateSelectedImages />
+    <div class='row justify-between'>
+      <div class='col-10' id='mymap'></div>
+      <div class='col'>
+        <q-btn color='primary' size='lg' style='margin-bottom: 20px' class='float-right'
+          label='Undo Changes'
+          @click='restoreOriginalPositions' />
+        <q-input filled type='number' class='float-right'
+          label='Degrees'
+          v-model.number='degrees' />
+        <q-btn outline color='primary' class='float-right'
+          label='Rotate Selected'
+          @click='rotateSelectedImages' />
+      </div>
     </div>
 
-    <div id='mymap'></div>
-
-    <div v-if='matches.length'>
-      <q-list bordered separated>
-        <q-item v-for='match in matches' v-bind:key='match.num'>
-          Match {{ match.num }}: {{ match.src }} - {{ match.tgt }} ({{ match.status }})
-        </q-item>
-      </q-list>
+    <div style='width: 83%'>
+      <q-card>
+        <q-tabs active-color='primary' indicator-color='primary' align='justify' v-model='tab' >
+          <q-tab name='matches' label='Matches' />
+          <q-tab name='groups' label='Groups' />
+        </q-tabs>
+        <q-separator />
+        <q-tab-panels v-model='tab' animated>
+          <q-tab-panel name='matches'>
+            <MatchTable :matches='matches'></MatchTable>
+          </q-tab-panel>
+          <q-tab-panel name='groups'>
+            <GroupTable :groups='groups' :ungrouped='ungrouped'></GroupTable>
+          </q-tab-panel>
+        </q-tab-panels>
+      </q-card>
     </div>
 
-    <div v-if='!matches.length'>
-      <p>There are no match annotations for this workspace.</p>
-    </div>
-
-    <div v-if='groups.length'>
-      <q-list bordered separated>
-        <q-item v-for='group in groups' v-bind:key='group.num'>
-           Group {{ group.num }}:
-          <q-list dense>
-            <q-item v-for='frag in group.fragments' v-bind:key='frag.num'>
-              {{ frag.id }}
-            </q-item>
-          </q-list>
-        </q-item>
-        <q-item>
-          Ungrouped
-          <q-list dense>
-            <q-item v-for='frag in ungrouped' v-bind:key='frag.num'>
-              {{ frag.id }}
-            </q-item>
-          </q-list>
-        </q-item>
-      </q-list>
-    </div>
-
-  </q-page>
+  </div>
 </template>
 
 <script>
+import MatchTable from 'components/MatchTable.vue'
+import GroupTable from 'components/GroupTable.vue'
+
 import { matrix, multiply, sin, cos, unit } from 'mathjs'
 // leaflet
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-// leaflet add-ons
-import 'leaflet-toolbar/dist/leaflet.toolbar.js'
-import 'leaflet-distortableimage/dist/leaflet.distortableimage.js'
 import 'leaflet-toolbar/dist/leaflet.toolbar.css'
 import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
+require('leaflet-toolbar')
+require('leaflet-distortableimage')
+
+// leaflet add-ons
+//import 'leaflet-toolbar/dist/leaflet.toolbar.js'
+//import 'leaflet-distortableimage/dist/leaflet.distortableimage.js'
 
 export default {
   name: 'Workspace',
   components: {
+    MatchTable,
+    GroupTable
   },
   props: {
-    id: String
+    id: {
+      type: String,
+      required: true
+    },
   },
   data () {
     return {
+      tab: 'matches',
       WORKSPACE_SERVER: 'http://localhost:8080/workspace',
-      // id: 'WDC1_crate2',
       width: 3840, // 1920,
       height: 2400, // 1200,
       degrees: 0,
@@ -305,11 +302,9 @@ export default {
 
 <style>
 #mymap {
-  height: 700px;
-  width: 90%;
+  height: 600px;
   border: 1px solid;
-  margin-top: 50px;
-  margin-bottom: 50px;
+  margin-bottom: 30px;
 }
 
 .match-Yes {

@@ -2,6 +2,7 @@
   <q-page padding>
 
     <div class="q-pa-md row items-start q-gutter-md" v-if='crates.length'>
+
       <q-card v-for='crate in crates' v-bind:key='crate'>
         <q-card-section class="bg-primary text-white">
           <div class="text-h6">{{ crate }}</div>
@@ -11,8 +12,8 @@
           <router-link :to="{ name: 'Workspace', params: { id: crate} }">View</router-link>
         </q-card-actions>
       </q-card>
-    </div>
 
+    </div>
   </q-page>
 </template>
 
