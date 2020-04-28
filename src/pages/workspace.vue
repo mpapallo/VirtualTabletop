@@ -2,16 +2,42 @@
   <div class='q-px-lg'>
     <h4>{{folder}}/{{ id }}</h4>
 
+    <q-btn color='primary' style='margin-bottom: 10px'
+      label='How To Use'
+      @click='howto = true' />
+    <q-dialog v-model='howto'>
+      <q-card>
+        <q-card-section>
+          <div class='text-h5'>Tips for map interaction</div>
+        </q-card-section>
+        <q-card-section>
+          <q-list separator>
+            <q-item-label>Labels</q-item-label>
+            <q-item-label caption>Use map layer control in top right corner to toggle labels on and off</q-item-label>
+            <q-item-label>Actions</q-item-label>
+            <q-item-label caption>Select an image, drag to move or use red handles to rotate</q-item-label>
+            <q-item-label>Bulk Actions</q-item-label>
+            <q-item-label caption>Hold shift and select multiple images, drag to move or use input box on right to rotate</q-item-label>
+            <q-item-label>Undo</q-item-label>
+            <q-item-label caption>Use undo button on right to restore original positions</q-item-label>
+          </q-list>
+        </q-card-section>
+        <q-card-actions align='right'>
+          <q-btn flat label='OK' color='primary' v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <div class='row justify-between'>
       <div class='col-10' id='mymap'></div>
-      <div class='col'>
-        <q-btn color='primary' size='lg' style='margin-bottom: 20px' class='float-right'
+      <div class='col-md-2'>
+        <q-btn color='primary' size='lg' class='q-ma-sm'
           label='Undo Changes'
           @click='restoreOriginalPositions' />
-        <q-input filled type='number' class='float-right'
+        <q-input filled type='number' class='q-ma-sm'
           label='Degrees'
           v-model.number='degrees' />
-        <q-btn outline color='primary' class='float-right'
+        <q-btn outline color='primary' class='q-ma-sm'
           label='Rotate Selected'
           @click='rotateSelectedImages' />
       </div>
@@ -75,6 +101,7 @@ export default {
       height: 2400,
       degrees: 0,
       tab: 'matches',
+      howto: false,
       // store fetched workspace info
       groups: [],
       ungrouped: [],
