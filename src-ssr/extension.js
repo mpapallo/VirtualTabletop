@@ -18,14 +18,14 @@ module.exports.extendApp = function ({ app, ssr }) {
      Example: app.use(), app.get() etc
   */
 
-  // // CORS middleware
-  // const allowCrossDomain = function(req, res, next) {
-  //     res.header('Access-Control-Allow-Origin', '*');
-  //     res.header('Access-Control-Allow-Methods', '*');
-  //     res.header('Access-Control-Allow-Headers', '*');
-  //     next();
-  // }
-  // app.use(allowCrossDomain)
+  // CORS middleware
+  const allowCrossDomain = function(req, res, next) {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', '*');
+      res.header('Access-Control-Allow-Headers', '*');
+      next();
+  }
+  app.use(allowCrossDomain)
 
   //********************//
   // CAS Authentication (https://www.npmjs.com/package/cas-authentication)
@@ -62,11 +62,11 @@ module.exports.extendApp = function ({ app, ssr }) {
   }
   // This route will de-authenticate the client with the Express server and then
   // redirect the client to the CAS logout page.
-  // app.get('/logout', cas.logout);
-  // // Small middleware that sets the CAS auth service_url on first request.
-  // app.use(cas.checkServiceURL);
-  // // Unauthenticated users should get redirected to CAS login before any route.
-  // app.use(cas.bounce);
+  app.get('/logout', cas.logout);
+  // Small middleware that sets the CAS auth service_url on first request.
+  app.use(cas.checkServiceURL);
+  // Unauthenticated users should get redirected to CAS login before any route.
+  app.use(cas.bounce);
 
   //********************//
   // Workspaces
@@ -84,9 +84,9 @@ module.exports.extendApp = function ({ app, ssr }) {
     const folder = req.query.folder;
     const workspace_id = req.query.id;
     if (!(folder && workspace_id)) { return }
+
     // fetch workspace xml file served as JSON
     const url = new URL('http://localhost:3000/get-xml/');
-    // url.searchParams.append('folder', folder);
     url.searchParams.append('id', folder + '/' + workspace_id);
     let response = await fetch(url);
     let data = await response.json();
@@ -120,7 +120,6 @@ module.exports.extendApp = function ({ app, ssr }) {
         let group_obj = {};
         group_obj.num = group_num;
         group_num += 1;
-
         // parse group transform matrix as array of vals
         const group_transform = g.XF['$t'].split(/\s/);
         let group_xf = [];
@@ -130,7 +129,6 @@ module.exports.extendApp = function ({ app, ssr }) {
         group_xf[3] *= 5;
         group_xf[7] *= 5;
         group_obj.xf = group_xf;
-
         // parse each fragment info within group
         group_obj.fragments = [];
         let frag_num = 0;
@@ -151,7 +149,6 @@ module.exports.extendApp = function ({ app, ssr }) {
           // push fragment to group
           group_obj.fragments.push(frag_obj);
         }
-
         // push group to groups list
         groups.push(group_obj);
       }
@@ -189,11 +186,9 @@ module.exports.extendApp = function ({ app, ssr }) {
   const extractFragInfo = function (f, num) {
     let frag_obj = {};
     frag_obj.num = num;
-
     // parse id for url
     frag_obj.id = f.ID;
     frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color-masked.png';
-
     // parse fragment transform matrix as array of vals
     let frag_xf = [];
     const transform = f.XF['$t'].split(/\s/);
@@ -206,5 +201,13 @@ module.exports.extendApp = function ({ app, ssr }) {
 
     return frag_obj;
   };
+
+  app.get('/get-workspaces', async (req, res) => {
+    const url = new URL('http://localhost:3000/get-workspaces/');
+    url.searchParams.append('folder', req.query.folder);
+    let response = await fetch(url);
+    let data = await response.json();
+    res.send(data);
+  });
 
 };

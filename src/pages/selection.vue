@@ -45,7 +45,7 @@ export default {
   methods: {
     async fetchWorkspaces (list, folder) {
       try {
-        const url = new URL('http://localhost:3000/get-workspaces/')
+        const url = new URL('http://localhost:8080/get-workspaces/')
         url.searchParams.append('folder', folder)
         let response = await fetch(url)
         let data = await response.json()
