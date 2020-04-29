@@ -64,16 +64,15 @@
       </q-card>
     </div>
     </div>
+
   </div>
 </template>
 
 <script>
 import MatchTable from 'components/MatchTable.vue'
 import GroupTable from 'components/GroupTable.vue'
-
 import { matrix, multiply, sin, cos, unit } from 'mathjs'
-// leaflet and plugins
-// import L from 'leaflet'
+// Leaflet and plugins
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-toolbar/dist/leaflet.toolbar.css'
 import 'leaflet-distortableimage/dist/leaflet.distortableimage.css'
@@ -99,9 +98,8 @@ export default {
   },
   data () {
     return {
-      WORKSPACE_SERVER: 'http://localhost:8080/workspace',
-      width: 7680,
-      height: 4800,
+      SERVER: 'http://localhost:8080',
+      // v-model
       degrees: 0,
       tab: 'matches',
       howto: false,
@@ -110,6 +108,8 @@ export default {
       ungrouped: [],
       matches: [],
       // store map info
+      width: 7680,
+      height: 4800,
       map: null,
       imageGroup: null,  // L.distortableCollection
       fragments: {},     // { fragID: { url, origPosition } }
@@ -125,6 +125,7 @@ export default {
     this.createTabletop()
   },
   methods: {
+    // Create Leaflet map instance with just background image.
     initMap () {
       const url = 'https://cdn.hipwallpaper.com/i/72/7/pPns49.png'
       const bounds = [[0, 0], [this.height, this.width]]
@@ -136,10 +137,13 @@ export default {
       L.imageOverlay(url, bounds).addTo(this.map)
       this.map.fitBounds(bounds)
       this.control = L.control.layers().addTo(this.map)
+      // Update labels when label layer is toggled on:
       this.map.on('overlayadd', this.repopulateAllLabels, this)
     },
+
+    // Queries workspace endpoint of server for group, fragment, and match info.
     async fetchWorkspace () {
-      const url = new URL(this.WORKSPACE_SERVER)
+      const url = new URL(this.SERVER + '/workspace')
       url.searchParams.append('folder', this.folder)
       url.searchParams.append('id', this.id)
       const data = await this.fetchAsync(url)
@@ -147,6 +151,8 @@ export default {
       this.ungrouped = data.fragments
       this.matches = data.matches
     },
+
+    // Populate images and label layers from group, fragment, and match info.
     createTabletop () {
       this.groups.forEach(group => {
         group.fragments.forEach(frag => {
@@ -161,8 +167,10 @@ export default {
       this.createLabels()
       this.createAnnotations()
     },
+
+    // Get fragment image url and proper map coordinates.
     extractFragmentInfo (frag, xf) {
-      // apply given transformation (from original xml file) to img corners
+      // Apply given transformation (from original xml file) to image corners:
       const xcenter = this.width / 4
       const ycenter = this.height / 4
       const points = [
@@ -174,7 +182,7 @@ export default {
       const corners = []
       points.forEach(p => {
         const result = this.multiplyMatrixAndPoint(xf, p)
-        // points in leaflet are (lat, lng) so basically (y, x)
+        // Points in leaflet are (lat, lng) so basically (y, x)
         corners.push(L.latLng(result[1] + ycenter, result[0] + xcenter))
       })
       this.fragments[frag.id] = {
@@ -182,8 +190,9 @@ export default {
         origPosition: corners
       }
     },
+
+    // Make a copy of original image coords so we can undo changes later.
     copyCorners () {
-      // need to make a copy of original image coords so we can undo changes later
       for (const frag in this.fragments) {
         const coords = this.fragments[frag].origPosition
         let t = []
@@ -193,6 +202,8 @@ export default {
         this.corners[frag] = t
       }
     },
+
+    // Populate imageGroup layer with original image positions.
     repopulateImages () {
       this.images = []
       this.copyCorners()
@@ -211,31 +222,38 @@ export default {
         img.on('update', this.repopulateAllLabels, this)
       }
     },
+
+    // Create layer for fragment IDs, labels centered on each image.
     createLabels () {
       this.labels = L.layerGroup().addTo(this.map)
       for (const frag in this.fragments) {
         const midpoint = this.getAveragePoint(this.corners[frag])
-        // create fragment ID label as permanent tooltip
+        // Create fragment ID label as permanent tooltip
         const marker = L.marker(midpoint, { icon: L.divIcon(), opacity: 0.01 })
         marker.bindTooltip(frag, { permanent: true, className: 'my-label', direction: 'top' })
         this.labels.addLayer(marker)
       }
       this.control.addOverlay(this.labels, 'Labels')
     },
+
+    // Create layer for match annotation, labels centered between two images.
     createAnnotations () {
       this.annotations = L.layerGroup().addTo(this.map)
       this.matches.forEach(point => {
-        // create match annotation label as permanent tooltip
+        // Create match annotation label as permanent tooltip
         const targetCorners = this.corners[point.tgt]
         const mid1 = this.getAveragePoint(targetCorners)
         const sourceCorners = this.corners[point.src]
         const mid2 = this.getAveragePoint(sourceCorners)
         const line = L.polyline([mid1, mid2])
-        line.bindTooltip(point.comment, { permanent: true, className: 'match-' + point.status, direction: 'top' })
+        // Truncate the match comment (can see full comment in table under map).
+        line.bindTooltip(point.comment.substring(0, 10), { permanent: true, className: 'match-' + point.status, direction: 'top' })
         this.annotations.addLayer(line)
       })
       this.control.addOverlay(this.annotations, 'Match Info')
     },
+
+    // Wipe the label layers, and repopulate using current image positions.
     repopulateAllLabels () {
       if (this.map.hasLayer(this.labels)) {
         this.labels.clearLayers()
@@ -248,15 +266,20 @@ export default {
         this.createAnnotations()
       }
     },
+
+    // Wipe the imageGroup and label layers, repopulate with original image positions.
     restoreOriginalPositions () {
       this.imageGroup.clearLayers()
       this.repopulateImages()
       this.repopulateAllLabels()
     },
+
+    // Using user input degrees, rotate the images that are currently selected.
     rotateSelectedImages () {
       const m = this.getRotationMatrix()
       let collected = []
       let midpoints = []
+      // "isCollected" is the DistortableCollection term for selection.
       this.imageGroup.eachLayer(image => {
         if (this.imageGroup.isCollected(image)) {
           collected.push(image)
@@ -267,6 +290,7 @@ export default {
       collected.forEach(image => {
         const c = image.getCorners()
         let newCorners = []
+        // Essentially a rotation matrix applied to each point.
         c.forEach(point => {
           const newLat = (point.lat - rotLat) * m[0] + (point.lng - rotLng) * m[1] + rotLat
           const newLng = (point.lat - rotLat) * m[2] + (point.lng - rotLng) * m[3] + rotLng
@@ -275,6 +299,8 @@ export default {
         image.setCorners(newCorners)
       })
     },
+
+    // Helper methods
     async fetchAsync (url) {
       try {
         let response = await fetch(url)
@@ -284,6 +310,7 @@ export default {
         console.error(e)
       }
     },
+    // Given a list of LatLngs, return the average coordinate.
     getAveragePoint (coords) {
       let sumLat = 0,
         sumLng = 0
@@ -293,6 +320,7 @@ export default {
       })
       return [sumLat / coords.length, sumLng / coords.length]
     },
+    // Given a list of [lat, lng] points, return the average point.
     getAveragePointFromList (coords) {
       let sumLat = 0,
         sumLng = 0
@@ -302,6 +330,7 @@ export default {
       })
       return [sumLat / coords.length, sumLng / coords.length]
     },
+    // Matrix mult methods
     // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Matrix_math_for_the_web
     multiplyMatrixAndPoint (matrixObj, point) {
       const m = matrixObj._data

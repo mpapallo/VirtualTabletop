@@ -3,13 +3,12 @@
 
     <q-header elevated class="bg-primary text-white">
       <q-toolbar>
-        <q-btn flat round icon="palette"
+        <q-btn flat round icon="home"
           v-go-back=" '/' "
         />
         <q-toolbar-title>
           Virtual Tabletop
         </q-toolbar-title>
-
         <q-tabs align="right">
           <q-route-tab to="/select" label="Select A Workspace" />
           <q-route-tab to="/about" label="About" />

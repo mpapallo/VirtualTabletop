@@ -23,8 +23,11 @@ app.use(allowCrossDomain);
 
 const dir = path.join(__dirname, 'public');
 
+// Serve static files from db (mostly fragment images)
 app.use(express.static(dir));
 
+// /get-workspaces endpoint
+// Sends list of .xml files in specified folder (crates/ or matches/)
 app.get('/get-workspaces', async (req, res) => {
 	const folder = req.query.folder || 'crates';
 	const fullpath = './public/tongeren_vrijthof_db/workspace/' + folder;
@@ -43,7 +46,8 @@ app.get('/get-workspaces', async (req, res) => {
 	});
 });
 
-
+// /get-xml endpoint
+// Serves xml info for specified workspace as JSON
 app.get('/get-xml', (req, res) => {
 	const id = req.query.id
 	const fullpath = './public/tongeren_vrijthof_db/workspace/' + id + '.xml';
