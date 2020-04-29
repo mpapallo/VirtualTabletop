@@ -25,25 +25,29 @@ const dir = path.join(__dirname, 'public');
 
 app.use(express.static(dir));
 
-app.get('/get-crates', async (req, res) => {
-	const crates = [];
-	fs.readdir('./public/tongeren_vrijthof_db/workspace/crates/', (err, files) => {
+app.get('/get-workspaces', async (req, res) => {
+	const folder = req.query.folder || 'crates';
+	const fullpath = './public/tongeren_vrijthof_db/workspace/' + folder;
+	const workspaces = [];
+	fs.readdir(fullpath, (err, files) => {
 		if (err) {
 			console.error(err);
 			return;
 		}
 		for (const file of files) {
 			if (file.endsWith('.xml')) {
-				crates.push(file);
+				workspaces.push(file);
 			}
 		}
-		res.send( { crates: crates } );
+		res.send( { workspaces: workspaces } );
 	});
 });
 
+
 app.get('/get-xml', (req, res) => {
 	const id = req.query.id
-	fs.readFile('./public/tongeren_vrijthof_db/workspace/crates/' + id + '.xml', (err, data) => {
+	const fullpath = './public/tongeren_vrijthof_db/workspace/' + id + '.xml';
+	fs.readFile(fullpath, (err, data) => {
 		if (err) {
 			console.error(err)
 			return;

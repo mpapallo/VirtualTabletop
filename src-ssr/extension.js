@@ -28,7 +28,7 @@ module.exports.extendApp = function ({ app, ssr }) {
   app.use(allowCrossDomain)
 
   //********************//
-  // CAS Authentication (https://www.npmjs.com/package/cas-authentication)
+  // CAS Authentication
   //********************//
   const
     session = require('express-session'),
@@ -72,12 +72,9 @@ module.exports.extendApp = function ({ app, ssr }) {
   // Workspaces
   //********************//
   const
-    util = require('util'),
     fetch = require('node-fetch'),
-    fs = require('fs'),
-    xml2js = require('xml2js'),
     probe = require('probe-image-size');
-  const { matrix } = require('mathjs')
+  const DB_SERVER_URL = 'http://localhost:3000/';
 
   // Workspace endpoint, query must contain id of workspace.
   app.get('/workspace', async (req, res) => {
@@ -86,7 +83,7 @@ module.exports.extendApp = function ({ app, ssr }) {
     if (!(folder && workspace_id)) { return }
 
     // fetch workspace xml file served as JSON
-    const url = new URL('http://localhost:3000/get-xml/');
+    const url = new URL(DB_SERVER_URL + 'get-xml/');
     url.searchParams.append('id', folder + '/' + workspace_id);
     let response = await fetch(url);
     let data = await response.json();
@@ -188,7 +185,7 @@ module.exports.extendApp = function ({ app, ssr }) {
     frag_obj.num = num;
     // parse id for url
     frag_obj.id = f.ID;
-    frag_obj.url = 'http://localhost:3000/tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color-masked.png';
+    frag_obj.url = DB_SERVER_URL + 'tongeren_vrijthof_db/fragments/' + frag_obj.id + '/front-2d/color-masked.png';
     // parse fragment transform matrix as array of vals
     let frag_xf = [];
     const transform = f.XF['$t'].split(/\s/);
@@ -203,7 +200,7 @@ module.exports.extendApp = function ({ app, ssr }) {
   };
 
   app.get('/get-workspaces', async (req, res) => {
-    const url = new URL('http://localhost:3000/get-workspaces/');
+    const url = new URL(DB_SERVER_URL + 'get-workspaces/');
     url.searchParams.append('folder', req.query.folder);
     let response = await fetch(url);
     let data = await response.json();

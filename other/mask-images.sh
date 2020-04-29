@@ -8,4 +8,3 @@ do
 done
 
 echo Masked images saved in front-2d/
-
