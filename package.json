@@ -17,7 +17,7 @@
     "express-session": "^1.17.0",
     "leaflet": "^1.6.0",
     "leaflet-distortableimage": "^0.12.6",
-    "mathjs": "^6.6.1",
+    "mathjs": "^7.5.1",
     "node-fetch": "^2.6.0",
     "probe-image-size": "^5.0.0",
     "quasar": "^1.0.0",
